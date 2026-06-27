@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    "lib": ["ES2024"],
+
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+
+    "baseUrl": "./src",
+
+    "paths": {
+      "@core/*":       ["core/*"],
+      "@entities/*":  ["entities/*"],
+      "@types/*":     ["types/*"],
+      "@events/*":    ["events/*"],
+      "@auth/*":      ["auth/*"],
+      "@connection/*":["connection/*"],
+      "@messaging/*": ["messaging/*"],
+      "@utils/*":     ["utils/*"]
+    },
+
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

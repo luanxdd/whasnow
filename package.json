@@ -1,0 +1,60 @@
+{
+  "name": "whasnow",
+  "version": "1.0.0",
+  "description": "Modern abstraction layer over Baileys for WhatsApp bot development",
+  "keywords": [
+    "whatsapp",
+    "whatsapp-bot",
+    "baileys",
+    "typescript",
+    "bot",
+    "whatsapp-api",
+    "whasnow"
+  ],
+  "author": "Luan Santos",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luanxdd/whasnow.git"
+  },
+  "homepage": "https://github.com/luanxdd/whasnow#readme",
+  "bugs": {
+    "url": "https://github.com/luanxdd/whasnow/issues"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "tsx test/message-quoted.test.ts && tsx test/context-targets.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "better-sqlite3": "^11.0.0",
+    "drizzle-orm": "^0.36.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

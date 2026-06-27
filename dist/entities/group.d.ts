@@ -1,0 +1,31 @@
+import type { GroupMetadata, WASocket } from '@whiskeysockets/baileys';
+import { GroupMetadataCache } from './group-metadata-cache.js';
+import { Member } from './member.js';
+import type { MuteStore } from '../stores/mute-store.js';
+import type { Jid, MediaSource, MuteEntry } from '../types/common.js';
+export declare class Group {
+    private readonly socket;
+    readonly id: Jid;
+    private readonly muteStore?;
+    private readonly metadataCache?;
+    constructor(socket: WASocket, id: Jid, muteStore?: MuteStore | undefined, metadataCache?: GroupMetadataCache | undefined);
+    member(jid: Jid): Member;
+    members(): Promise<Member[]>;
+    admins(): Promise<Member[]>;
+    isAdmin(jid: Jid): Promise<boolean>;
+    mutedMembers(): MuteEntry[];
+    metadata(): Promise<GroupMetadata>;
+    refresh(): Promise<GroupMetadata>;
+    setName(name: string): Promise<void>;
+    setDescription(description: string): Promise<void>;
+    setProfilePicture(source: MediaSource): Promise<void>;
+    removeProfilePicture(): Promise<void>;
+    setLocked(locked: boolean): Promise<void>;
+    setAnnouncementOnly(enabled: boolean): Promise<void>;
+    close(): Promise<void>;
+    open(): Promise<void>;
+    inviteLink(): Promise<string>;
+    revokeInviteLink(): Promise<string>;
+    leave(): Promise<void>;
+    add(participants: Jid[]): Promise<void>;
+}
