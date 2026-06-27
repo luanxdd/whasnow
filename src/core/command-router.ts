@@ -1,4 +1,12 @@
+import { fileURLToPath } from 'node:url';
+
 import type { Context } from './context.js';
+
+import {
+  loadCommandsFromDirectory,
+  type LoadCommandsOptions,
+  type LoadCommandsResult,
+} from './command-loader.js';
 
 export type UnauthorizedReason =
   | 'group'
@@ -83,6 +91,23 @@ export class CommandRouter {
     }
 
     return this;
+  }
+
+  async loadCommands(
+    dir: string | URL,
+    options?: LoadCommandsOptions,
+  ): Promise<LoadCommandsResult> {
+    const path =
+      dir instanceof URL ? fileURLToPath(dir) : dir;
+
+    const result = await loadCommandsFromDirectory(
+      path,
+      options,
+    );
+
+    this.registerMany(result.commands);
+
+    return result;
   }
 
   find(

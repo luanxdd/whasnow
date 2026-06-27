@@ -14,6 +14,8 @@ export { mention } from './utils/mention.js';
 
 export {
   AlreadyStartedError,
+  CommandDirectoryNotFoundError,
+  CommandLoadError,
   ConnectionError,
   GroupContextError,
   InvalidMediaSourceError,
@@ -32,6 +34,11 @@ export type {
   CommandRouterOptions,
   UnauthorizedReason,
 } from './core/command-router.js';
+
+export type {
+  LoadCommandsOptions,
+  LoadCommandsResult,
+} from './core/command-loader.js';
 
 export type {
   MessageHandler,

@@ -203,6 +203,46 @@ client.commands({
 
 `reason` é um dos valores: `'group' | 'admin' | 'cooldown'`.
 
+### Auto-load de comandos
+
+Em vez de importar e registrar cada comando manualmente, `router.loadCommands()` varre um diretório (recursivamente, por padrão) e registra todo `CommandDefinition` exportado em cada arquivo encontrado — não precisa ser `export default`, qualquer export nomeado é detectado:
+
+```ts
+const router = client.commands({ prefix: '!' });
+
+await router.loadCommands(new URL('./commands', import.meta.url));
+```
+
+Isso funciona tanto em desenvolvimento (`tsx`) quanto após o build (`tsc`), já que `import.meta.url` aponta sempre para o próprio arquivo em execução — sem depender de caminhos relativos ao diretório onde o processo foi iniciado.
+
+Um único arquivo pode exportar mais de um comando:
+
+```ts
+// commands/moderation/sanction.ts
+export const ban: CommandDefinition = { name: 'ban', /* ... */ };
+export const unban: CommandDefinition = { name: 'unban', /* ... */ };
+```
+
+Arquivos `*.test.ts`, `*.spec.ts` e `*.d.ts` são ignorados automaticamente. Outras opções:
+
+```ts
+await router.loadCommands(new URL('./commands', import.meta.url), {
+  recursive: true,        // varre subpastas (padrão: true)
+  extensions: ['.ts'],    // extensões aceitas (padrão: .js, .mjs, .cjs, .ts, .mts, .cts)
+
+  filter: (command, filePath) => {
+    // retorne false para pular um comando específico
+    return true;
+  },
+
+  onFileLoaded: (filePath, commands) => {
+    console.log(`${filePath}: ${commands.length} comando(s)`);
+  },
+});
+```
+
+`loadCommands()` retorna `{ commands, files }` com tudo que foi encontrado — útil para logs (`router.list().length` continua funcionando normalmente depois). Se o diretório não existir, é lançado `CommandDirectoryNotFoundError`; se um arquivo falhar ao ser importado (erro de sintaxe, dependência ausente, etc), é lançado `CommandLoadError` com a propriedade `path` apontando para o arquivo problemático.
+
 ---
 
 ## Middleware
@@ -400,6 +440,8 @@ try {
 | `InvalidMediaSourceError` | `INVALID_MEDIA_SOURCE` | Caminho de arquivo/URL inválido ao enviar mídia |
 | `ReplyTimeoutError` | `REPLY_TIMEOUT` | `waitForReply()` não recebeu resposta a tempo |
 | `WaitForReplyUnavailableError` | `WAIT_FOR_REPLY_UNAVAILABLE` | `ctx.waitForReply()` chamado num `Context` criado manualmente, sem referência ao `Client` |
+| `CommandDirectoryNotFoundError` | `COMMAND_DIRECTORY_NOT_FOUND` | `router.loadCommands()` apontado para um diretório que não existe |
+| `CommandLoadError` | `COMMAND_LOAD_FAILED` | Um arquivo de comando falhou ao ser importado por `router.loadCommands()` (erro de sintaxe, dependência ausente, etc) — `err.path` aponta para o arquivo |
 
 Todas estendem `WhaSnowError`, então `catch (err) { if (err instanceof WhaSnowError) }` cobre qualquer uma delas de uma vez.
 

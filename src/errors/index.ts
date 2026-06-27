@@ -8,6 +8,11 @@ export {
 } from './connection.js';
 
 export {
+  CommandDirectoryNotFoundError,
+  CommandLoadError,
+} from './commands.js';
+
+export {
   GroupContextError,
   ModerationStoreUnavailableError,
 } from './group.js';
