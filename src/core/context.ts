@@ -7,7 +7,7 @@ import { Chat } from '../entities/chat.js';
 import { Contact } from '../entities/contact.js';
 import { Group } from '../entities/group.js';
 import type { GroupMetadataCache } from '../entities/group-metadata-cache.js';
-import { Message } from '../entities/message.js';
+import { Message, type PollVoteSource } from '../entities/message.js';
 
 import type { RateLimiter } from '../connection/rate-limiter.js';
 
@@ -28,6 +28,7 @@ export interface ContextDeps {
   muteStore?: MuteStore;
   metadataCache?: GroupMetadataCache;
   rateLimiter?: RateLimiter;
+  pollStore?: PollVoteSource;
   waitForReplyFn?: (
     options?: WaitForReplyContextOptions<Context>,
   ) => Promise<Context>;
@@ -51,11 +52,13 @@ export class Context {
       socket,
       raw,
       deps.rateLimiter,
+      deps.pollStore,
     );
     this.chat = new Chat(
       socket,
       this.message.chatId,
       deps.rateLimiter,
+      deps.pollStore,
     );
     this.from = new Contact(
       socket,

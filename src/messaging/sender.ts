@@ -4,7 +4,7 @@ import type {
   WASocket,
 } from '@whiskeysockets/baileys';
 
-import { Message } from '../entities/message.js';
+import { Message, type PollVoteSource } from '../entities/message.js';
 
 import { MessageSendError } from '../errors/index.js';
 
@@ -12,7 +12,9 @@ import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
   Jid,
+  MediaSendOptions,
   MediaSource,
+  SendPollOptions,
   SendTextOptions,
 } from '../types/common.js';
 
@@ -28,11 +30,13 @@ export class MessageSender {
     private readonly chatId: Jid,
     private readonly quotedMessage?: WAMessage,
     private readonly rateLimiter?: RateLimiter,
+    private readonly pollStore?: PollVoteSource,
   ) {}
 
   async audio(
     source: MediaSource,
     asVoiceNote = false,
+    options?: MediaSendOptions,
   ): Promise<void> {
     const audio = await resolveMedia(
       source,
@@ -42,6 +46,7 @@ export class MessageSender {
       audio,
       mimetype: 'audio/mp4',
       ptt: asVoiceNote,
+      viewOnce: options?.viewOnce,
     });
   }
 
@@ -78,6 +83,7 @@ export class MessageSender {
   async image(
     source: MediaSource,
     caption?: string,
+    options?: MediaSendOptions,
   ): Promise<void> {
     const image = await resolveMedia(
       source,
@@ -86,6 +92,7 @@ export class MessageSender {
     await this.dispatch({
       image,
       caption,
+      viewOnce: options?.viewOnce,
     });
   }
 
@@ -113,12 +120,14 @@ export class MessageSender {
       this.socket,
       raw,
       this.rateLimiter,
+      this.pollStore,
     );
   }
 
   async video(
     source: MediaSource,
     caption?: string,
+    options?: MediaSendOptions,
   ): Promise<void> {
     const video = await resolveMedia(
       source,
@@ -127,7 +136,32 @@ export class MessageSender {
     await this.dispatch({
       video,
       caption,
+      viewOnce: options?.viewOnce,
     });
+  }
+
+  async poll(
+    name: string,
+    values: string[],
+    options?: SendPollOptions,
+  ): Promise<Message> {
+    const raw = await this.dispatch({
+      poll: {
+        name,
+        values,
+        selectableCount:
+          options?.selectableCount ?? 1,
+        toAnnouncementGroup:
+          options?.toAnnouncementGroup ?? false,
+      },
+    });
+
+    return new Message(
+      this.socket,
+      raw,
+      this.rateLimiter,
+      this.pollStore,
+    );
   }
 
   private async dispatch(

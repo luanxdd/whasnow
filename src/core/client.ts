@@ -11,11 +11,13 @@ import { Chat } from '../entities/chat.js';
 import { Contact } from '../entities/contact.js';
 import { Group } from '../entities/group.js';
 import { GroupMetadataCache } from '../entities/group-metadata-cache.js';
+import { StatusManager } from '../entities/status-manager.js';
 
 import { EventBus } from '../events/bus.js';
 import { SocketEventAdapter } from '../events/socket-adapter.js';
 
 import { MessageStore } from '../messaging/message-store.js';
+import { PollStore } from '../messaging/poll-store.js';
 
 import { MuteStore } from '../stores/mute-store.js';
 
@@ -70,6 +72,8 @@ export class Client {
   private readonly connection: ConnectionManager;
   private readonly messageStore =
     new MessageStore();
+  private readonly pollStore =
+    new PollStore();
   private readonly muteStore: MuteStore;
   private readonly metadataCache =
     new GroupMetadataCache();
@@ -78,6 +82,8 @@ export class Client {
     [];
   private readonly middlewares: Middleware[] =
     [];
+
+  private statusManagerInstance: StatusManager | null = null;
 
   private started = false;
 
@@ -311,6 +317,30 @@ export class Client {
     return code;
   }
 
+  get status(): StatusManager {
+    this.assertStarted();
+
+    if (!this.statusManagerInstance) {
+      this.statusManagerInstance = new StatusManager(
+        this.socket!,
+      );
+    }
+
+    return this.statusManagerInstance;
+  }
+
+  async rejectCall(
+    callId: string,
+    callerJid: Jid,
+  ): Promise<void> {
+    this.assertStarted();
+
+    await this.socket!.rejectCall(
+      callId,
+      callerJid,
+    );
+  }
+
   chat(jid: Jid): Chat {
     this.assertStarted();
 
@@ -318,6 +348,7 @@ export class Client {
       this.socket!,
       jid,
       this.rateLimiter,
+      this.pollStore,
     );
   }
 
@@ -418,6 +449,8 @@ export class Client {
       this.messageStore,
     );
 
+    this.statusManagerInstance = null;
+
     const socket = this.socket;
 
     socket.ev.on(
@@ -431,6 +464,7 @@ export class Client {
       socket,
       this.bus,
       this.metadataCache,
+      this.pollStore,
     ).bind();
 
     let pairingCodePrinted = false;
@@ -545,6 +579,14 @@ export class Client {
             );
           }
 
+          if (
+            raw.message?.pollCreationMessage ||
+            raw.message?.pollCreationMessageV2 ||
+            raw.message?.pollCreationMessageV3
+          ) {
+            this.pollStore.registerCreation(raw);
+          }
+
           if (raw.key.fromMe) {
             continue;
           }
@@ -589,6 +631,7 @@ export class Client {
               muteStore: this.muteStore,
               metadataCache: this.metadataCache,
               rateLimiter: this.rateLimiter,
+              pollStore: this.pollStore,
               waitForReplyFn: (options) =>
                 this.waitForReply(options),
             },

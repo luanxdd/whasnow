@@ -30,6 +30,9 @@ await client.start();
 - [Enviando mensagens e mídia](#enviando-mensagens-e-mídia)
 - [Trabalhando com grupos](#trabalhando-com-grupos)
 - [Mute nativo](#mute-nativo)
+- [Poll (enquetes) como mecanismo de interação](#poll-enquetes-como-mecanismo-de-interação)
+- [Status (stories)](#status-stories)
+- [Chamadas (call)](#chamadas-call)
 - [Eventos](#eventos)
 - [Tratamento de erros](#tratamento-de-erros)
 - [Referência de configuração](#referência-de-configuração)
@@ -188,7 +191,63 @@ router.register({
 });
 ```
 
-Use `onBlocked` para tratar quando um comando é bloqueado (sem ser admin, fora de cooldown, etc):
+Para comandos simples, `router.registerMap()` evita repetir `name` dentro do objeto — a chave já é o nome do comando, e um valor que é só função vira o `execute`:
+
+```ts
+router.registerMap({
+  ping: async (ctx) => {
+    await ctx.reply('pong 🏓');
+  },
+
+  ban: {
+    onlyGroup: true,
+    onlyAdmin: true,
+    async execute(ctx, args) {
+      // ...
+    },
+  },
+});
+```
+
+### Argumentos tipados
+
+O segundo parâmetro de `execute` é um `ArgsParser`, não um `string[]` cru — cada método consome o próximo argumento posicional já validado e convertido:
+
+```ts
+router.register({
+  name: 'mute',
+  onlyGroup: true,
+  onlyAdmin: true,
+  async execute(ctx, args) {
+    const alvo = args.string('usuario');
+    const minutos = args.number('minutos', { default: 5 });
+
+    // ...
+  },
+});
+```
+
+- `args.string(nome, options?)` — string
+- `args.number(nome, options?)` — number; lança `InvalidArgumentError` se não for numérico
+- `args.boolean(nome, options?)` — aceita `sim/não`, `true/false`, `1/0`
+- `args.rest(nome, options?)` — junta todo o restante em uma única string
+- `args.remaining()` — o que ainda não foi consumido, como `string[]`
+- `args.raw` — todos os tokens originais, sem consumir o cursor
+
+Todos os métodos aceitam `{ default }` (valor usado quando o argumento não veio) ou `{ optional: true }` (retorna `undefined` em vez de lançar). Sem nenhum dos dois, um argumento ausente lança `MissingArgumentError`.
+
+### Bloqueio e erros de comando
+
+Se um comando é bloqueado (`onlyGroup`, `onlyAdmin`, `cooldownMs`) e nenhum `onBlocked` é informado, a WhaSnow já responde com uma mensagem padrão em português. Para desabilitar isso sem assumir o aviso você mesmo, use `notifyBlocked: false`:
+
+```ts
+client.commands({
+  prefix: '!',
+  notifyBlocked: false, // nenhuma mensagem automática de bloqueio
+});
+```
+
+Use `onBlocked` quando quiser controlar a mensagem (ou parte dela):
 
 ```ts
 client.commands({
@@ -202,6 +261,17 @@ client.commands({
 ```
 
 `reason` é um dos valores: `'group' | 'admin' | 'cooldown'`.
+
+Se o `execute()` de um comando lançar um erro, use `onError` para tratá-lo — sem isso, o erro sobe até o `client.on('error', ...)` normal e a mensagem original fica sem resposta:
+
+```ts
+client.commands({
+  prefix: '!',
+  onError: async (err, ctx, command) => {
+    await ctx.reply('Deu ruim ao executar esse comando');
+  },
+});
+```
 
 ### Auto-load de comandos
 
@@ -298,6 +368,25 @@ await ctx.chat.send.sticker('./figurinha.webp');
 
 `MediaSource` aceita três formatos: caminho de arquivo local, URL (`http://`/`https://`) ou `Buffer` em memória.
 
+### Mensagens "ver uma vez" (view-once)
+
+`image`, `video` e `audio` aceitam um terceiro parâmetro de opções com `viewOnce`:
+
+```ts
+await ctx.chat.send.image('./foto.png', 'Some uma vez você vê', { viewOnce: true });
+await ctx.chat.send.video('./clipe.mp4', undefined, { viewOnce: true });
+```
+
+
+Para detectar se uma mensagem **recebida** é view-once ou efêmera (mensagens temporárias):
+
+```ts
+client.onMessage(async (ctx) => {
+  if (ctx.message.isViewOnce) { /* ... */ }
+  if (ctx.message.isEphemeral) { /* ... */ }
+});
+```
+
 ### Indicadores de digitação
 
 ```ts
@@ -345,12 +434,33 @@ await group.member(jid).demote();
 await group.member(jid).remove();
 
 await group.setName('Novo nome');
-await group.setAnnouncementOnly(true); // só admins enviam mensagens
-
-const link = await group.inviteLink();
+await group.open(); // só admins enviam mensagens
+await group.close(); // todos enviam mensagem 
+await group.inviteLink();
+await group.info(); // nome, descrição, dono, criação, etc.
+await group.setLocked(true); // só admins editam infos do grupo
 ```
 
 Use `ctx.group()` quando quiser tratar o caso "não é grupo" manualmente, e `ctx.requireGroup()` quando o comando só faz sentido dentro de um grupo (mais comum dentro de `execute()` de um comando com `onlyGroup: true`).
+
+### Criando e entrando em grupos
+
+```ts
+const group = await client.createGroup('Nome do grupo', [jid1, jid2]);
+
+const group = await client.joinGroup('https://chat.whatsapp.com/XXXXXXXX');
+```
+
+### Solicitações de entrada
+
+Grupos com aprovação de admin habilitada acumulam pedidos de entrada pendentes:
+
+```ts
+const solicitacoes = await group.joinRequests();
+
+await group.approveJoinRequests([jid1, jid2]);
+await group.rejectJoinRequests([jid3]);
+```
 
 ---
 
@@ -370,13 +480,83 @@ const client = new Client({
 E use a partir de qualquer `Member`:
 
 ```ts
-group.member(jid).mute({ duration: 3_600_000 }); // 1 hora em ms
-group.member(jid).mute();                        // sem expiração
-group.member(jid).unmute();
+await group.member(jid).mute({ duration: 3_600_000 }); // 1 hora em ms
+await group.member(jid).mute();                        // sem expiração
+await group.member(jid).unmute();
 group.member(jid).isMuted();
 ```
 
 > Sem `moderationDbPath` configurado, chamar `.mute()`/`.unmute()`/`.isMuted()` lança `ModerationStoreUnavailableError`.
+
+---
+
+## Poll (enquetes) como mecanismo de interação
+
+```ts
+const poll = await ctx.chat.send.poll(
+  'Qual prefere?',
+  ['🍕 Pizza', '🍔 Hambúrguer', '🌮 Taco'],
+  { selectableCount: 1 }, // 1 = escolha única (padrão). Use um valor maior para múltipla escolha.
+);
+```
+
+Ouça os votos chegarem em tempo real:
+
+```ts
+client.on('poll.vote', ({ chatId, pollMessageId, voterJid, selectedOptions }) => {
+  console.log(`${voterJid} votou em: ${selectedOptions.join(', ')}`);
+});
+```
+
+Ou agregue os votos recebidos até agora a partir da própria mensagem da poll:
+
+```ts
+const resultados = poll.votes(); // PollVote[] — só reflete votos chegados enquanto o processo está rodando
+```
+
+---
+
+## Status (stories)
+
+Postar e observar status do WhatsApp:
+
+```ts
+client.on('status.posted', ({ statusId, from, isMedia }) => {
+  console.log(`${from} postou um status (${isMedia ? 'mídia' : 'texto'})`);
+});
+
+await client.status.text('Bom dia! ☀️', {
+  statusJidList: [contatoJid1, contatoJid2], // obrigatório — quem pode ver
+  backgroundColor: '#FF5733',
+});
+
+await client.status.image('./foto.jpg', {
+  statusJidList: [contatoJid1, contatoJid2],
+  caption: 'Legenda do status',
+});
+
+await client.status.video('./clipe.mp4', {
+  statusJidList: [contatoJid1, contatoJid2],
+});
+```
+
+> Receber `status.posted` de outros contatos depende das configurações de privacidade deles, a WhaSnow só recebe o que o WhatsApp decide te entregar.
+
+---
+
+## Chamadas (call)
+
+```ts
+client.on('call', ({ callId, from, status, isVideo, isGroup }) => {
+  console.log(`Chamada de ${from} (${isVideo ? 'vídeo' : 'voz'}): ${status}`);
+
+  if (status === 'offer') {
+    client.rejectCall(callId, from);
+  }
+});
+```
+
+`status` é um dos valores: `'offer' | 'ringing' | 'accept' | 'reject' | 'timeout'`. A WhaSnow não atende chamadas (não há suporte a áudio/vídeo real no protocolo), `rejectCall()` apenas recusa.
 
 ---
 
@@ -394,6 +574,10 @@ client.on('group.participant', (payload) => {});
 client.on('presence', (payload) => {});
 client.on('message.edited', (payload) => {});
 client.on('message.deleted', (payload) => {});
+
+client.on('call', (payload) => {});
+client.on('poll.vote', (payload) => {});
+client.on('status.posted', (payload) => {});
 ```
 
 Use `.once()` em vez de `.on()` quando só precisar escutar a primeira ocorrência.
@@ -438,6 +622,7 @@ try {
 | `MessageSendError` | `MESSAGE_SEND_FAILED` | O envio de uma mensagem falhou silenciosamente |
 | `MediaDownloadError` | `MEDIA_DOWNLOAD_FAILED` | Download de mídia de uma mensagem falhou |
 | `InvalidMediaSourceError` | `INVALID_MEDIA_SOURCE` | Caminho de arquivo/URL inválido ao enviar mídia |
+| `PollVoteDecryptError` | `POLL_VOTE_DECRYPT_FAILED` | Falha ao decifrar um voto de poll recebido (mensagem de criação da poll não encontrada no store interno) |
 | `ReplyTimeoutError` | `REPLY_TIMEOUT` | `waitForReply()` não recebeu resposta a tempo |
 | `WaitForReplyUnavailableError` | `WAIT_FOR_REPLY_UNAVAILABLE` | `ctx.waitForReply()` chamado num `Context` criado manualmente, sem referência ao `Client` |
 | `CommandDirectoryNotFoundError` | `COMMAND_DIRECTORY_NOT_FOUND` | `router.loadCommands()` apontado para um diretório que não existe |

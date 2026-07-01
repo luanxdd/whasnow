@@ -1,15 +1,21 @@
-import { WhaSnowError } from './base.js';
+import {
+  WhaSnowError,
+} from './base.js';
 
 export class GroupContextError extends WhaSnowError {
-  readonly code = 'GROUP_CONTEXT_REQUIRED';
+  readonly code =
+    'GROUP_CONTEXT_REQUIRED';
 
   constructor() {
-    super('This action can only be performed within a group.');
+    super(
+      'This action can only be performed within a group.',
+    );
   }
 }
 
 export class ModerationStoreUnavailableError extends WhaSnowError {
-  readonly code = 'MODERATION_STORE_UNAVAILABLE';
+  readonly code =
+    'MODERATION_STORE_UNAVAILABLE';
 
   constructor() {
     super(

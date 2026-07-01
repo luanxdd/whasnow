@@ -1,31 +1,46 @@
-import { WhaSnowError } from './base.js';
+import {
+  WhaSnowError,
+} from './base.js';
 
 export class MessageSendError extends WhaSnowError {
-  readonly code = 'MESSAGE_SEND_FAILED';
+  readonly code =
+    'MESSAGE_SEND_FAILED';
 
-  constructor(message = 'Failed to send message: WhatsApp-s empty reply.') {
+  constructor(
+    message = 'Failed to send message: WhatsApp-s empty reply.',
+  ) {
     super(message);
   }
 }
 
 export class MediaDownloadError extends WhaSnowError {
-  readonly code = 'MEDIA_DOWNLOAD_FAILED';
+  readonly code =
+    'MEDIA_DOWNLOAD_FAILED';
 
-  constructor(message = 'Failed to download message media.', options?: { cause?: unknown }) {
+  constructor(
+    message = 'Failed to download message media.',
+    options?: {
+      cause?: unknown;
+    },
+  ) {
     super(message, options);
   }
 }
 
 export class ReplyTimeoutError extends WhaSnowError {
-  readonly code = 'REPLY_TIMEOUT';
+  readonly code =
+    'REPLY_TIMEOUT';
 
   constructor(timeoutMs: number) {
-    super(`No response received in ${timeoutMs}ms.`);
+    super(
+      `No response received in ${timeoutMs}ms.`,
+    );
   }
 }
 
 export class WaitForReplyUnavailableError extends WhaSnowError {
-  readonly code = 'WAIT_FOR_REPLY_UNAVAILABLE';
+  readonly code =
+    'WAIT_FOR_REPLY_UNAVAILABLE';
 
   constructor() {
     super(
@@ -35,9 +50,34 @@ export class WaitForReplyUnavailableError extends WhaSnowError {
 }
 
 export class InvalidMediaSourceError extends WhaSnowError {
-  readonly code = 'INVALID_MEDIA_SOURCE';
+  readonly code =
+    'INVALID_MEDIA_SOURCE';
 
-  constructor(source: string, options?: { cause?: unknown }) {
-    super(`Invalid or inaccessible media source: "${source}".`, options);
+  constructor(
+    source: string,
+    options?: {
+      cause?: unknown;
+    },
+  ) {
+    super(
+      `Invalid or inaccessible media source: "${source}".`,
+      options,
+    );
+  }
+}
+
+export class PollVoteDecryptError extends WhaSnowError {
+  readonly code =
+    'POLL_VOTE_DECRYPT_FAILED';
+
+  constructor(
+    options?: {
+      cause?: unknown;
+    },
+  ) {
+    super(
+      'Failed to decrypt an incoming poll vote. This usually means the original poll message was not found in the internal message store (it may have been sent before the bot started, or evicted from the LRU cache).',
+      options,
+    );
   }
 }

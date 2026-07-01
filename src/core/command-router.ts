@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
+import { ArgsParser } from './args.js';
+
 import type { Context } from './context.js';
 
 import {
@@ -25,16 +27,33 @@ export interface CommandDefinition {
 
   execute: (
     ctx: Context,
-    args: string[],
+    args: ArgsParser,
   ) => void | Promise<void>;
 }
+
+export type CommandMapEntry =
+  | CommandDefinition['execute']
+  | Omit<CommandDefinition, 'name'>;
+
+export type CommandMap = Record<
+  string,
+  CommandMapEntry
+>;
 
 export interface CommandRouterOptions {
   caseSensitive?: boolean;
 
+  notifyBlocked?: boolean;
+
   onBlocked?: (
     ctx: Context,
     reason: UnauthorizedReason,
+    command: CommandDefinition,
+  ) => void | Promise<void>;
+
+  onError?: (
+    err: unknown,
+    ctx: Context,
     command: CommandDefinition,
   ) => void | Promise<void>;
 
@@ -53,7 +72,9 @@ export class CommandRouter {
   >();
 
   private readonly caseSensitive: boolean;
+  private readonly notifyBlocked: boolean;
   private readonly onBlocked?: CommandRouterOptions['onBlocked'];
+  private readonly onError?: CommandRouterOptions['onError'];
   private readonly prefix: string;
 
   constructor(
@@ -62,7 +83,10 @@ export class CommandRouter {
     this.prefix = options.prefix ?? '!';
     this.caseSensitive =
       options.caseSensitive ?? false;
+    this.notifyBlocked =
+      options.notifyBlocked ?? true;
     this.onBlocked = options.onBlocked;
+    this.onError = options.onError;
   }
 
   register(
@@ -88,6 +112,30 @@ export class CommandRouter {
   ): this {
     for (const command of commands) {
       this.register(command);
+    }
+
+    return this;
+  }
+
+  registerMap(
+    commands: CommandMap,
+  ): this {
+    for (const [name, value] of Object.entries(
+      commands,
+    )) {
+      if (typeof value === 'function') {
+        this.register({
+          name,
+          execute: value,
+        });
+
+        continue;
+      }
+
+      this.register({
+        ...value,
+        name,
+      });
     }
 
     return this;
@@ -152,7 +200,7 @@ export class CommandRouter {
       command.onlyGroup &&
       !ctx.isGroup
     ) {
-      await this.onBlocked?.(
+      await this.notifyBlockedReason(
         ctx,
         'group',
         command,
@@ -165,7 +213,7 @@ export class CommandRouter {
       command.onlyAdmin &&
       !(await ctx.senderIsAdmin())
     ) {
-      await this.onBlocked?.(
+      await this.notifyBlockedReason(
         ctx,
         'admin',
         command,
@@ -186,7 +234,7 @@ export class CommandRouter {
         now - last <
         command.cooldownMs
       ) {
-        await this.onBlocked?.(
+        await this.notifyBlockedReason(
           ctx,
           'cooldown',
           command,
@@ -198,8 +246,62 @@ export class CommandRouter {
       this.lastRunAt.set(key, now);
     }
 
-    await command.execute(ctx, args);
+    try {
+      await command.execute(
+        ctx,
+        new ArgsParser(args),
+      );
+    } catch (err) {
+      if (!this.onError) {
+        throw err;
+      }
+
+      await this.onError(
+        err,
+        ctx,
+        command,
+      );
+    }
   };
+
+  private async notifyBlockedReason(
+    ctx: Context,
+    reason: UnauthorizedReason,
+    command: CommandDefinition,
+  ): Promise<void> {
+    if (this.onBlocked) {
+      await this.onBlocked(
+        ctx,
+        reason,
+        command,
+      );
+
+      return;
+    }
+
+    if (!this.notifyBlocked) {
+      return;
+    }
+
+    await ctx.reply(
+      this.defaultBlockedMessage(reason),
+    );
+  }
+
+  private defaultBlockedMessage(
+    reason: UnauthorizedReason,
+  ): string {
+    switch (reason) {
+      case 'group':
+        return 'Este comando só pode ser usado em grupos.';
+
+      case 'admin':
+        return 'Apenas administradores podem usar este comando.';
+
+      case 'cooldown':
+        return 'Aguarde um pouco antes de usar este comando novamente.';
+    }
+  }
 
   private normalize(
     name: string,

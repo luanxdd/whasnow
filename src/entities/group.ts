@@ -11,6 +11,9 @@ import { resolveMedia } from '../utils/media.js';
 import type { MuteStore } from '../stores/mute-store.js';
 
 import type {
+  GroupInfo,
+  GroupJoinRequest,
+  GroupJoinRequestResult,
   Jid,
   MediaSource,
   MuteEntry,
@@ -91,6 +94,25 @@ export class Group {
     this.metadataCache?.set(this.id, metadata);
 
     return metadata;
+  }
+
+  async info(): Promise<GroupInfo> {
+    const metadata = await this.metadata();
+
+    return {
+      id: metadata.id,
+      name: metadata.subject,
+      description: metadata.desc ?? null,
+      owner: metadata.owner ?? null,
+
+      createdAt: metadata.creation
+        ? new Date(metadata.creation * 1000)
+        : null,
+
+      memberCount: metadata.participants.length,
+      isLocked: metadata.restrict ?? false,
+      isAnnouncementOnly: metadata.announce ?? false,
+    };
   }
 
   setName(name: string): Promise<void> {
@@ -184,5 +206,50 @@ export class Group {
       participants,
       'add',
     );
+  }
+
+  async joinRequests(): Promise<GroupJoinRequest[]> {
+    const requests =
+      await this.socket.groupRequestParticipantsList(
+        this.id,
+      );
+
+    return requests.map((request: any) => ({
+      jid: request.jid,
+      requestMethod: request.request_method,
+
+      requestedAt: new Date(
+        Number(request.request_time) * 1000,
+      ),
+    }));
+  }
+
+  approveJoinRequests(
+    jids: Jid[],
+  ): Promise<GroupJoinRequestResult[]> {
+    return this.manageJoinRequests(jids, 'approve');
+  }
+
+  rejectJoinRequests(
+    jids: Jid[],
+  ): Promise<GroupJoinRequestResult[]> {
+    return this.manageJoinRequests(jids, 'reject');
+  }
+
+  private async manageJoinRequests(
+    jids: Jid[],
+    action: 'approve' | 'reject',
+  ): Promise<GroupJoinRequestResult[]> {
+    const results =
+      await this.socket.groupRequestParticipantsUpdate(
+        this.id,
+        jids,
+        action,
+      );
+
+    return results.map((result) => ({
+      jid: result.jid!,
+      status: result.status,
+    }));
   }
 }

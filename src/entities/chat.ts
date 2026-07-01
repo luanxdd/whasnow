@@ -1,13 +1,15 @@
 import type { WASocket } from '@whiskeysockets/baileys';
 
-import { Message } from '../entities/message.js';
+import { Message, type PollVoteSource } from '../entities/message.js';
 import { MessageSender } from '../messaging/sender.js';
 
 import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
   Jid,
+  MediaSendOptions,
   MediaSource,
+  SendPollOptions,
   SendTextOptions,
 } from '../types/common.js';
 
@@ -18,8 +20,9 @@ export class Chat {
     private readonly socket: WASocket,
     readonly id: Jid,
     rateLimiter?: RateLimiter,
+    pollStore?: PollVoteSource,
   ) {
-    this.send = new ChatSend(socket, id, rateLimiter);
+    this.send = new ChatSend(socket, id, rateLimiter, pollStore);
   }
 
   typing(): Promise<void> {
@@ -81,12 +84,14 @@ export class ChatSend {
     socket: WASocket,
     chatId: Jid,
     rateLimiter?: RateLimiter,
+    pollStore?: PollVoteSource,
   ) {
     this.sender = new MessageSender(
       socket,
       chatId,
       undefined,
       rateLimiter,
+      pollStore,
     );
   }
 
@@ -100,22 +105,25 @@ export class ChatSend {
   image(
     source: MediaSource,
     caption?: string,
+    options?: MediaSendOptions,
   ): Promise<void> {
-    return this.sender.image(source, caption);
+    return this.sender.image(source, caption, options);
   }
 
   video(
     source: MediaSource,
     caption?: string,
+    options?: MediaSendOptions,
   ): Promise<void> {
-    return this.sender.video(source, caption);
+    return this.sender.video(source, caption, options);
   }
 
   audio(
     source: MediaSource,
     asVoiceNote = false,
+    options?: MediaSendOptions,
   ): Promise<void> {
-    return this.sender.audio(source, asVoiceNote);
+    return this.sender.audio(source, asVoiceNote, options);
   }
 
   document(
@@ -132,5 +140,13 @@ export class ChatSend {
 
   sticker(source: MediaSource): Promise<void> {
     return this.sender.sticker(source);
+  }
+
+  poll(
+    name: string,
+    values: string[],
+    options?: SendPollOptions,
+  ): Promise<Message> {
+    return this.sender.poll(name, values, options);
   }
 }

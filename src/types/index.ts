@@ -1,4 +1,7 @@
 export type {
+  GroupInfo,
+  GroupJoinRequest,
+  GroupJoinRequestResult,
   Jid,
   MediaSource,
   MessageId,

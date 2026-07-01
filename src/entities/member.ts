@@ -47,7 +47,7 @@ export class Member {
     );
   }
 
-  mute(options: MuteOptions = {}): void {
+  async mute(options: MuteOptions = {}): Promise<void> {
     this.requireMuteStore().mute(
       this.groupId,
       this.jid,
@@ -55,7 +55,7 @@ export class Member {
     );
   }
 
-  unmute(): void {
+  async unmute(): Promise<void> {
     this.requireMuteStore().unmute(
       this.groupId,
       this.jid,

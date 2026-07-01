@@ -10,6 +10,8 @@ export {
 export {
   CommandDirectoryNotFoundError,
   CommandLoadError,
+  InvalidArgumentError,
+  MissingArgumentError,
 } from './commands.js';
 
 export {
@@ -21,6 +23,7 @@ export {
   InvalidMediaSourceError,
   MediaDownloadError,
   MessageSendError,
+  PollVoteDecryptError,
   ReplyTimeoutError,
   WaitForReplyUnavailableError,
 } from './messaging.js';

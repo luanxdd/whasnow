@@ -1,5 +1,6 @@
 import {
   downloadMediaMessage,
+  getAggregateVotesInPollMessage,
   proto,
   type WAMessage,
   type WASocket,
@@ -13,10 +14,17 @@ import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
   Jid,
+  MediaSendOptions,
   MediaSource,
   MessageId,
+  PollVote,
   SendTextOptions,
 } from '../types/common.js';
+
+
+export interface PollVoteSource {
+  getCreationMessage(pollMessageId: string): WAMessage | undefined;
+}
 
 export class Message {
   private readonly sender: MessageSender;
@@ -25,6 +33,7 @@ export class Message {
     private readonly socket: WASocket,
     private readonly raw: WAMessage,
     private readonly rateLimiter?: RateLimiter,
+    private readonly pollStore?: PollVoteSource,
   ) {
     this.sender = new MessageSender(
       socket,
@@ -129,6 +138,37 @@ export class Message {
     );
   }
 
+  get isViewOnce(): boolean {
+    const msg = this.raw.message;
+
+    if (!msg) {
+      return false;
+    }
+
+    return Boolean(
+      msg.viewOnceMessage ||
+      msg.viewOnceMessageV2 ||
+      msg.viewOnceMessageV2Extension ||
+      msg.imageMessage?.viewOnce ||
+      msg.videoMessage?.viewOnce ||
+      msg.audioMessage?.viewOnce,
+    );
+  }
+
+  get isEphemeral(): boolean {
+    return Boolean(
+      this.activeContextInfo?.expiration,
+    );
+  }
+
+  get isPoll(): boolean {
+    return Boolean(
+      this.raw.message?.pollCreationMessage ||
+      this.raw.message?.pollCreationMessageV2 ||
+      this.raw.message?.pollCreationMessageV3,
+    );
+  }
+
   get timestamp(): Date {
     const ts = this.raw.messageTimestamp;
 
@@ -151,24 +191,28 @@ export class Message {
   replyWithImage(
     source: MediaSource,
     caption?: string,
+    options?: MediaSendOptions,
   ): Promise<void> {
-    return this.sender.image(source, caption);
+    return this.sender.image(source, caption, options);
   }
 
   replyWithVideo(
     source: MediaSource,
     caption?: string,
+    options?: MediaSendOptions,
   ): Promise<void> {
-    return this.sender.video(source, caption);
+    return this.sender.video(source, caption, options);
   }
 
   replyWithAudio(
     source: MediaSource,
     asVoiceNote = false,
+    options?: MediaSendOptions,
   ): Promise<void> {
     return this.sender.audio(
       source,
       asVoiceNote,
+      options,
     );
   }
 
@@ -193,6 +237,28 @@ export class Message {
           key: this.raw.key,
         },
       },
+    );
+  }
+
+  votes(): PollVote[] {
+    if (!this.isPoll) {
+      return [];
+    }
+
+    const trackedMessage =
+      this.pollStore?.getCreationMessage(this.id) ??
+      this.raw;
+
+    const aggregated = getAggregateVotesInPollMessage({
+      message: trackedMessage.message,
+      pollUpdates: trackedMessage.pollUpdates ?? [],
+    });
+
+    return aggregated.flatMap((option) =>
+      option.voters.map((voterJid) => ({
+        voterJid,
+        selectedOptions: [option.name],
+      })),
     );
   }
 

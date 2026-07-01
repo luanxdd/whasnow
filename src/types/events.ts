@@ -1,5 +1,7 @@
 import type { GroupMetadata } from '@whiskeysockets/baileys';
 
+import type { CallStatus } from './common.js';
+
 export interface MessageReceivedPayload {
   chatId: string;
   senderId: string;
@@ -62,6 +64,27 @@ export interface MessageDeletedPayload {
   messageId: string;
 }
 
+export interface CallPayload {
+  callId: string;
+  from: string;
+  status: CallStatus;
+  isVideo: boolean;
+  isGroup: boolean;
+}
+
+export interface PollVotePayload {
+  chatId: string;
+  pollMessageId: string;
+  voterJid: string;
+  selectedOptions: string[];
+}
+
+export interface StatusPostedPayload {
+  statusId: string;
+  from: string;
+  isMedia: boolean;
+}
+
 export interface WhaSnowEventMap {
   ready: void;
 
@@ -78,6 +101,10 @@ export interface WhaSnowEventMap {
   'group.updated': GroupUpdatePayload;
 
   presence: PresencePayload;
+
+  call: CallPayload;
+  'poll.vote': PollVotePayload;
+  'status.posted': StatusPostedPayload;
 
   error: Error;
 }

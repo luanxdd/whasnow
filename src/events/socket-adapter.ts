@@ -1,23 +1,37 @@
 import {
+  getAggregateVotesInPollMessage,
   proto,
   type WASocket,
 } from '@whiskeysockets/baileys';
 
-import type { GroupMetadataCache } from '../entities/group-metadata-cache.js';
+import type {
+  GroupMetadataCache,
+} from '../entities/group-metadata-cache.js';
 
-import type { EventBus } from './bus.js';
+import type {
+  PollStore,
+} from '../messaging/poll-store.js';
+
+import type {
+  EventBus,
+} from './bus.js';
+
+const STATUS_BROADCAST_JID =
+  'status@broadcast';
 
 export class SocketEventAdapter {
   constructor(
     private readonly socket: WASocket,
     private readonly bus: EventBus,
     private readonly metadataCache: GroupMetadataCache,
+    private readonly pollStore: PollStore,
   ) {}
 
   bind(): void {
     this.bindGroups();
     this.bindMessages();
     this.bindPresence();
+    this.bindCalls();
   }
 
   private bindGroups(): void {
@@ -106,6 +120,31 @@ export class SocketEventAdapter {
             continue;
           }
 
+          if (
+            message.key.remoteJid ===
+              STATUS_BROADCAST_JID &&
+            !message.key.fromMe
+          ) {
+            this.bus.emit(
+              'status.posted',
+              {
+                statusId:
+                  message.key.id ?? '',
+                from:
+                  message.key
+                    .participant ?? '',
+                isMedia: Boolean(
+                  message.message
+                    ?.imageMessage ||
+                    message.message
+                      ?.videoMessage,
+                ),
+              },
+            );
+
+            continue;
+          }
+
           if (message.key.fromMe) {
             continue;
           }
@@ -141,6 +180,16 @@ export class SocketEventAdapter {
       (updates) => {
         for (const update of updates) {
           if (
+            update.update
+              ?.pollUpdates?.length
+          ) {
+            this.handlePollUpdates(
+              update.key,
+              update.update.pollUpdates,
+            );
+          }
+
+          if (
             !update.update?.message
           ) {
             continue;
@@ -161,6 +210,99 @@ export class SocketEventAdapter {
     );
   }
 
+  private handlePollUpdates(
+    key: proto.IMessageKey,
+    pollUpdates: proto.IPollUpdate[],
+  ): void {
+    const pollMessageId = key.id;
+
+    if (!pollMessageId) {
+      return;
+    }
+
+    for (const update of pollUpdates) {
+      const updatedCreation =
+        this.pollStore.addVote(
+          pollMessageId,
+          update,
+        );
+
+      const voterJid =
+        update.pollUpdateMessageKey
+          ?.participant ??
+        update.pollUpdateMessageKey
+          ?.remoteJid ??
+        '';
+
+      if (
+        !updatedCreation ||
+        !voterJid
+      ) {
+        continue;
+      }
+
+      const aggregated =
+        getAggregateVotesInPollMessage(
+          {
+            message:
+              updatedCreation.message,
+            pollUpdates:
+              updatedCreation.pollUpdates ??
+              [],
+          },
+        );
+
+      const selectedOptions =
+        aggregated
+          .filter((option) =>
+            option.voters.includes(
+              voterJid,
+            ),
+          )
+          .map(
+            (option) =>
+              option.name,
+          );
+
+      this.bus.emit(
+        'poll.vote',
+        {
+          chatId:
+            key.remoteJid ?? '',
+          pollMessageId,
+          voterJid,
+          selectedOptions,
+        },
+      );
+    }
+  }
+
+  private bindCalls(): void {
+    this.socket.ev.on(
+      'call',
+      (calls) => {
+        for (const call of calls) {
+          this.bus.emit('call', {
+            callId: call.id,
+            from: call.from,
+            status: call.status as
+              | 'offer'
+              | 'ringing'
+              | 'accept'
+              | 'reject'
+              | 'timeout',
+            isVideo:
+              call.isVideo ??
+              false,
+            isGroup:
+              call.isGroup ??
+              false,
+          });
+        }
+      },
+    );
+  }
+
   private bindPresence(): void {
     this.socket.ev.on(
       'presence.update',
@@ -171,13 +313,16 @@ export class SocketEventAdapter {
         ] of Object.entries(
           presences,
         )) {
-          this.bus.emit('presence', {
-            chatId: id,
-            participantId,
-            presence:
-              presenceData.lastKnownPresence ??
-              'unavailable',
-          });
+          this.bus.emit(
+            'presence',
+            {
+              chatId: id,
+              participantId,
+              presence:
+                presenceData.lastKnownPresence ??
+                'unavailable',
+            },
+          );
         }
       },
     );
