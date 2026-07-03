@@ -75,6 +75,33 @@ export async function buildSticker(
     return input;
   }
 
+  if (
+    sniff.mimeType === 'image/webp' &&
+    sniff.isAnimated &&
+    input.length <= MAX_ANIMATED_BYTES &&
+    (await isCompliantStickerCanvas(input))
+  ) {
+    return wantsMetadata
+      ? injectStickerExif(input, {
+          packName: options.packName ?? 'WhaSnow',
+          authorName: options.authorName ?? '',
+          categories:
+            options.categories?.length
+              ? options.categories
+              : ['🏹'],
+        })
+      : input;
+  }
+
+  if (sniff.mimeType === 'image/webp' && sniff.isAnimated) {
+    throw new StickerBuildError(
+      'Este webp animado não está no formato que o WhatsApp exige ' +
+      '(quadrado 512x512, até ~500KB); a WhaSnow ainda não sabe ' +
+      'redimensionar/recomprimir um webp já animado vindo de outro ' +
+      'tamanho — só reaproveitar um que já está nesse formato.',
+    );
+  }
+
   const webp =
     sniff.mimeType === 'image/gif' ||
     sniff.mimeType.startsWith('video/')
