@@ -66,6 +66,20 @@ export class InvalidMediaSourceError extends WhaSnowError {
   }
 }
 
+export class StickerBuildError extends WhaSnowError {
+  readonly code =
+    'STICKER_BUILD_FAILED';
+
+  constructor(
+    message = 'Failed to build a sticker from the provided media.',
+    options?: {
+      cause?: unknown;
+    },
+  ) {
+    super(message, options);
+  }
+}
+
 export class PollVoteDecryptError extends WhaSnowError {
   readonly code =
     'POLL_VOTE_DECRYPT_FAILED';

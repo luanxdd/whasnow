@@ -349,6 +349,7 @@ export class Client {
       jid,
       this.rateLimiter,
       this.pollStore,
+      this.config.stickerDefaults,
     );
   }
 
@@ -632,6 +633,7 @@ export class Client {
               metadataCache: this.metadataCache,
               rateLimiter: this.rateLimiter,
               pollStore: this.pollStore,
+              stickerDefaults: this.config.stickerDefaults,
               waitForReplyFn: (options) =>
                 this.waitForReply(options),
             },

@@ -21,6 +21,7 @@ import type { MuteStore } from '../stores/mute-store.js';
 import type {
   Jid,
   SendTextOptions,
+  StickerDefaults,
   WaitForReplyContextOptions,
 } from '../types/common.js';
 
@@ -29,6 +30,7 @@ export interface ContextDeps {
   metadataCache?: GroupMetadataCache;
   rateLimiter?: RateLimiter;
   pollStore?: PollVoteSource;
+  stickerDefaults?: StickerDefaults;
   waitForReplyFn?: (
     options?: WaitForReplyContextOptions<Context>,
   ) => Promise<Context>;
@@ -53,12 +55,14 @@ export class Context {
       raw,
       deps.rateLimiter,
       deps.pollStore,
+      deps.stickerDefaults,
     );
     this.chat = new Chat(
       socket,
       this.message.chatId,
       deps.rateLimiter,
       deps.pollStore,
+      deps.stickerDefaults,
     );
     this.from = new Contact(
       socket,

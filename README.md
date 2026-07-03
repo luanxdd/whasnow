@@ -28,6 +28,7 @@ await client.start();
 - [Recebendo mensagens](#recebendo-mensagens)
 - [Sistema de comandos](#sistema-de-comandos)
 - [Enviando mensagens e mídia](#enviando-mensagens-e-mídia)
+- [Criando stickers](#criando-stickers)
 - [Trabalhando com grupos](#trabalhando-com-grupos)
 - [Mute nativo](#mute-nativo)
 - [Poll (enquetes) como mecanismo de interação](#poll-enquetes-como-mecanismo-de-interação)
@@ -363,7 +364,7 @@ await ctx.chat.send.image('./foto.png', 'Legenda opcional');
 await ctx.chat.send.video('https://exemplo.com/video.mp4');
 await ctx.chat.send.audio('./audio.mp3', true); // true = nota de voz
 await ctx.chat.send.document('./relatorio.pdf', 'relatorio.pdf');
-await ctx.chat.send.sticker('./figurinha.webp');
+await ctx.chat.send.sticker('./foto-qualquer.jpg'); // veja "Criando stickers" abaixo
 ```
 
 `MediaSource` aceita três formatos: caminho de arquivo local, URL (`http://`/`https://`) ou `Buffer` em memória.
@@ -417,6 +418,73 @@ const client = new Client({
 ```
 
 O limite é por `Client` (conta), não por chat — então enviar para 10 chats diferentes ainda respeita o mesmo intervalo entre si.
+
+---
+
+## Criando stickers
+
+`send.sticker()` não exige mais um `.webp` pronto: aceita **qualquer imagem, gif ou vídeo** (caminho, URL ou `Buffer`) e monta a figurinha pra você — redimensiona pro quadrado 512x512 que o WhatsApp espera, converte pra webp e, se for gif/vídeo, gera uma figurinha animada.
+
+```ts
+await ctx.chat.send.sticker('./foto.jpg');           // imagem comum -> sticker estático
+await ctx.chat.send.sticker('./meme.gif');            // gif -> sticker animado
+await ctx.chat.send.sticker('https://exemplo.com/x.png');
+await ctx.message.replyWithSticker('./foto.jpg');     // cita a mensagem original
+```
+
+Se a mídia já for um `.webp` estático dentro dos limites do WhatsApp, a WhaSnow não reprocessa — só envia direto.
+
+### Nome do pack e autor
+
+Passe `packName`/`authorName` (e opcionalmente `categories`, os emojis associados no seletor de figurinhas) pra gravar isso como metadado no arquivo:
+
+```ts
+await ctx.chat.send.sticker('./foto.jpg', {
+  packName: 'Figurinhas do Grupo',
+  authorName: 'WhaSnow Bot',
+  categories: ['😂', '🔥'],
+});
+```
+
+Figurinhas com o mesmo `packName`/`authorName` são agrupadas no mesmo pack pelo WhatsApp. Para não repetir isso em todo envio, configure um padrão uma vez no `Client`:
+
+```ts
+const client = new Client({
+  phoneNumber: '5511999999999',
+  stickerDefaults: {
+    packName: 'Figurinhas do Grupo',
+    authorName: 'WhaSnow Bot',
+  },
+});
+```
+
+Qualquer `packName`/`authorName` passado direto na chamada tem prioridade sobre esse padrão.
+
+### Enquadramento
+
+Por padrão (`crop: 'contain'`), a imagem inteira é preservada e o espaço sobrando fica transparente (ou usa `backgroundColor`, se informado). Use `crop: 'cover'` pra preencher o quadrado inteiro, cortando as bordas:
+
+```ts
+await ctx.chat.send.sticker('./foto-retrato.jpg', {
+  crop: 'cover',
+});
+```
+
+### Limites e erros
+
+Figurinhas animadas são cortadas em até 6 segundos e reduzidas de qualidade automaticamente pra caber nos ~500KB que o WhatsApp aceita; estáticas seguem uma lógica parecida para o limite de ~1MB. Se mesmo assim não for possível gerar algo dentro do limite (ex: vídeo muito complexo), ou se a mídia de origem for inválida, o método rejeita com `StickerBuildError`:
+
+```ts
+import { StickerBuildError } from 'whasnow';
+
+try {
+  await ctx.chat.send.sticker(video);
+} catch (err) {
+  if (err instanceof StickerBuildError) {
+    await ctx.reply('Não consegui transformar isso em figurinha 😕');
+  }
+}
+```
 
 ---
 
@@ -623,6 +691,7 @@ try {
 | `MediaDownloadError` | `MEDIA_DOWNLOAD_FAILED` | Download de mídia de uma mensagem falhou |
 | `InvalidMediaSourceError` | `INVALID_MEDIA_SOURCE` | Caminho de arquivo/URL inválido ao enviar mídia |
 | `PollVoteDecryptError` | `POLL_VOTE_DECRYPT_FAILED` | Falha ao decifrar um voto de poll recebido (mensagem de criação da poll não encontrada no store interno) |
+| `StickerBuildError` | `STICKER_BUILD_FAILED` | Não foi possível transformar a mídia de origem em uma figurinha válida (mídia inválida, ou resultado acima do limite de tamanho do WhatsApp mesmo após a compressão automática) |
 | `ReplyTimeoutError` | `REPLY_TIMEOUT` | `waitForReply()` não recebeu resposta a tempo |
 | `WaitForReplyUnavailableError` | `WAIT_FOR_REPLY_UNAVAILABLE` | `ctx.waitForReply()` chamado num `Context` criado manualmente, sem referência ao `Client` |
 | `CommandDirectoryNotFoundError` | `COMMAND_DIRECTORY_NOT_FOUND` | `router.loadCommands()` apontado para um diretório que não existe |
@@ -653,6 +722,11 @@ interface WhaSnowConfig {
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent'; // padrão: 'warn'
 
   moderationDbPath?: string;        // habilita o mute nativo (ver seção acima)
+
+  stickerDefaults?: {                // branding padrão aplicado a send.sticker()
+    packName?: string;
+    authorName?: string;
+  };
 }
 ```
 

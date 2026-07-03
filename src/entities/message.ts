@@ -13,12 +13,14 @@ import { MediaDownloadError } from '../errors/index.js';
 import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
+  CreateStickerOptions,
   Jid,
   MediaSendOptions,
   MediaSource,
   MessageId,
   PollVote,
   SendTextOptions,
+  StickerDefaults,
 } from '../types/common.js';
 
 
@@ -34,12 +36,15 @@ export class Message {
     private readonly raw: WAMessage,
     private readonly rateLimiter?: RateLimiter,
     private readonly pollStore?: PollVoteSource,
+    private readonly stickerDefaults?: StickerDefaults,
   ) {
     this.sender = new MessageSender(
       socket,
       this.chatId,
       raw,
       rateLimiter,
+      undefined,
+      stickerDefaults,
     );
   }
 
@@ -123,6 +128,8 @@ export class Message {
           this.raw.messageTimestamp,
       } as WAMessage,
       this.rateLimiter,
+      undefined,
+      this.stickerDefaults,
     );
   }
 
@@ -226,6 +233,13 @@ export class Message {
       fileName,
       caption,
     );
+  }
+
+  replyWithSticker(
+    source: MediaSource,
+    options?: CreateStickerOptions,
+  ): Promise<void> {
+    return this.sender.sticker(source, options);
   }
 
   async react(emoji: string): Promise<void> {

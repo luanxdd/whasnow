@@ -25,5 +25,6 @@ export {
   MessageSendError,
   PollVoteDecryptError,
   ReplyTimeoutError,
+  StickerBuildError,
   WaitForReplyUnavailableError,
 } from './messaging.js';

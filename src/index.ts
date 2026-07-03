@@ -30,6 +30,7 @@ export {
   PairingCodeError,
   PollVoteDecryptError,
   ReplyTimeoutError,
+  StickerBuildError,
   WaitForReplyUnavailableError,
   WhaSnowError,
 } from './errors/index.js';
@@ -64,6 +65,7 @@ export type {
 export type {
   Jid,
   CallStatus,
+  CreateStickerOptions,
   GroupInfo,
   GroupJoinRequest,
   GroupJoinRequestResult,
@@ -77,6 +79,7 @@ export type {
   PostStatusOptions,
   SendPollOptions,
   SendTextOptions,
+  StickerDefaults,
   WaitForReplyContextOptions,
 } from './types/common.js';
 

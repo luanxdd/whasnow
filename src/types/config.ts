@@ -1,3 +1,5 @@
+import type { StickerDefaults } from './common.js';
+
 export interface WhaSnowConfig {
   phoneNumber: string;
 
@@ -23,6 +25,8 @@ export interface WhaSnowConfig {
     | 'silent';
 
   moderationDbPath?: string;
+
+  stickerDefaults?: StickerDefaults;
 }
 
 export const defaultConfig: Required<WhaSnowConfig> = {
@@ -43,4 +47,6 @@ export const defaultConfig: Required<WhaSnowConfig> = {
   logLevel: 'warn',
 
   moderationDbPath: './whasnow-moderation.db',
+
+  stickerDefaults: {},
 };

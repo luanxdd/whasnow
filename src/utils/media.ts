@@ -80,3 +80,73 @@ export async function resolveMedia(
     });
   }
 }
+
+const MAX_REMOTE_MEDIA_BYTES = 50 * 1024 * 1024;
+const REMOTE_FETCH_TIMEOUT_MS = 20_000;
+
+
+export async function resolveMediaBuffer(
+  source: MediaSource,
+): Promise<Buffer> {
+  if (Buffer.isBuffer(source)) {
+    return source;
+  }
+
+  if (
+    source.startsWith('http://') ||
+    source.startsWith('https://')
+  ) {
+    try {
+      const response = await fetch(source, {
+        signal: AbortSignal.timeout(
+          REMOTE_FETCH_TIMEOUT_MS,
+        ),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Request failed with status ${response.status}`,
+        );
+      }
+
+      const contentLength = response.headers.get(
+        'content-length',
+      );
+
+      if (
+        contentLength &&
+        Number(contentLength) > MAX_REMOTE_MEDIA_BYTES
+      ) {
+        throw new Error(
+          `Remote media is ${Math.round(Number(contentLength) / 1_000_000)}MB, ` +
+          `above the ${Math.round(MAX_REMOTE_MEDIA_BYTES / 1_000_000)}MB limit.`,
+        );
+      }
+
+      const buffer = Buffer.from(
+        await response.arrayBuffer(),
+      );
+
+      if (buffer.length > MAX_REMOTE_MEDIA_BYTES) {
+        throw new Error(
+          `Remote media is ${Math.round(buffer.length / 1_000_000)}MB, ` +
+          `above the ${Math.round(MAX_REMOTE_MEDIA_BYTES / 1_000_000)}MB limit.`,
+        );
+      }
+
+      return buffer;
+    } catch (err) {
+      throw new InvalidMediaSourceError(source, {
+        cause: err,
+      });
+    }
+  }
+
+  try {
+    return await readFile(source);
+  } catch (err) {
+    throw new InvalidMediaSourceError(source, {
+      cause: err,
+    });
+  }
+}

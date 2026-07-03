@@ -11,11 +11,13 @@ import { MessageSendError } from '../errors/index.js';
 import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
+  CreateStickerOptions,
   Jid,
   MediaSendOptions,
   MediaSource,
   SendPollOptions,
   SendTextOptions,
+  StickerDefaults,
 } from '../types/common.js';
 
 import {
@@ -24,6 +26,8 @@ import {
   resolveMedia,
 } from '../utils/media.js';
 
+import { buildSticker } from '../media/sticker-builder.js';
+
 export class MessageSender {
   constructor(
     private readonly socket: WASocket,
@@ -31,6 +35,7 @@ export class MessageSender {
     private readonly quotedMessage?: WAMessage,
     private readonly rateLimiter?: RateLimiter,
     private readonly pollStore?: PollVoteSource,
+    private readonly stickerDefaults?: StickerDefaults,
   ) {}
 
   async audio(
@@ -98,9 +103,12 @@ export class MessageSender {
 
   async sticker(
     source: MediaSource,
+    options?: CreateStickerOptions,
   ): Promise<void> {
-    const sticker =
-      await resolveMedia(source);
+    const sticker = await buildSticker(source, {
+      ...this.stickerDefaults,
+      ...options,
+    });
 
     await this.dispatch({
       sticker,
@@ -121,6 +129,7 @@ export class MessageSender {
       raw,
       this.rateLimiter,
       this.pollStore,
+      this.stickerDefaults,
     );
   }
 
@@ -161,6 +170,7 @@ export class MessageSender {
       raw,
       this.rateLimiter,
       this.pollStore,
+      this.stickerDefaults,
     );
   }
 

@@ -3,6 +3,13 @@ export type MediaSource = string | Buffer;
 export type MessageId = string;
 export type PhoneNumber = string;
 
+export type CallStatus =
+  | 'offer'
+  | 'ringing'
+  | 'accept'
+  | 'reject'
+  | 'timeout';
+
 export interface SendTextOptions {
   mentions?: Jid[];
 }
@@ -21,19 +28,23 @@ export interface MediaSendOptions {
   viewOnce?: boolean;
 }
 
+export interface StickerDefaults {
+  packName?: string;
+  authorName?: string;
+}
+
+export interface CreateStickerOptions extends StickerDefaults {
+  categories?: string[];
+  crop?: 'contain' | 'cover';
+  backgroundColor?: string;
+}
+
 export interface PostStatusOptions {
   statusJidList: Jid[];
   backgroundColor?: string;
   font?: number;
   caption?: string;
 }
-
-export type CallStatus =
-  | 'offer'
-  | 'ringing'
-  | 'accept'
-  | 'reject'
-  | 'timeout';
 
 export interface IncomingCall {
   id: string;

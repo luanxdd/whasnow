@@ -6,11 +6,13 @@ import { MessageSender } from '../messaging/sender.js';
 import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
+  CreateStickerOptions,
   Jid,
   MediaSendOptions,
   MediaSource,
   SendPollOptions,
   SendTextOptions,
+  StickerDefaults,
 } from '../types/common.js';
 
 export class Chat {
@@ -21,8 +23,9 @@ export class Chat {
     readonly id: Jid,
     rateLimiter?: RateLimiter,
     pollStore?: PollVoteSource,
+    stickerDefaults?: StickerDefaults,
   ) {
-    this.send = new ChatSend(socket, id, rateLimiter, pollStore);
+    this.send = new ChatSend(socket, id, rateLimiter, pollStore, stickerDefaults);
   }
 
   typing(): Promise<void> {
@@ -85,6 +88,7 @@ export class ChatSend {
     chatId: Jid,
     rateLimiter?: RateLimiter,
     pollStore?: PollVoteSource,
+    stickerDefaults?: StickerDefaults,
   ) {
     this.sender = new MessageSender(
       socket,
@@ -92,6 +96,7 @@ export class ChatSend {
       undefined,
       rateLimiter,
       pollStore,
+      stickerDefaults,
     );
   }
 
@@ -138,8 +143,11 @@ export class ChatSend {
     );
   }
 
-  sticker(source: MediaSource): Promise<void> {
-    return this.sender.sticker(source);
+  sticker(
+    source: MediaSource,
+    options?: CreateStickerOptions,
+  ): Promise<void> {
+    return this.sender.sticker(source, options);
   }
 
   poll(
