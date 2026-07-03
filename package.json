@@ -1,6 +1,6 @@
 {
   "name": "whasnow",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Modern abstraction layer over Baileys for WhatsApp bot development",
   "keywords": [
     "whatsapp",
