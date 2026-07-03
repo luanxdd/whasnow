@@ -9,6 +9,7 @@ export class Contact {
   constructor(
     private readonly socket: WASocket,
     readonly jid: Jid,
+    readonly pushName?: string,
   ) {}
 
   get phone(): PhoneNumber {

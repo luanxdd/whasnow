@@ -67,6 +67,7 @@ export class Context {
     this.from = new Contact(
       socket,
       this.message.senderId,
+      this.message.pushName,
     );
   }
 

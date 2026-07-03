@@ -60,6 +60,10 @@ export class Message {
     return this.raw.key.participant ?? this.chatId;
   }
 
+  get pushName(): string | undefined {
+    return this.raw.pushName ?? undefined;
+  }
+
   get fromMe(): boolean {
     return this.raw.key.fromMe ?? false;
   }
