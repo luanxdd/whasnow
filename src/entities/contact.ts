@@ -17,14 +17,7 @@ export class Contact {
   }
 
   async name(): Promise<string | undefined> {
-    try {
-      const results = await this.socket.onWhatsApp(this.phone);
-      const info = results?.[0];
-
-      return (info as any)?.notify;
-    } catch {
-      return undefined;
-    }
+    return this.pushName;
   }
 
   async avatar(): Promise<string | undefined> {
