@@ -26,8 +26,27 @@ export interface PollVote {
   selectedOptions: string[];
 }
 
-export interface MediaSendOptions {
+export interface SendImageOptions {
+  caption?: string;
   viewOnce?: boolean;
+  mentions?: Jid[];
+}
+
+export interface SendVideoOptions {
+  caption?: string;
+  viewOnce?: boolean;
+  mentions?: Jid[];
+}
+
+export interface SendAudioOptions {
+  voice?: boolean;
+  viewOnce?: boolean;
+}
+
+export interface SendDocumentOptions {
+  fileName?: string;
+  caption?: string;
+  mentions?: Jid[];
 }
 
 export interface StickerDefaults {

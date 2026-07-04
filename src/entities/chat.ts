@@ -8,10 +8,13 @@ import type { RateLimiter } from '../connection/rate-limiter.js';
 import type {
   CreateStickerOptions,
   Jid,
-  MediaSendOptions,
   MediaSource,
+  SendAudioOptions,
+  SendDocumentOptions,
+  SendImageOptions,
   SendPollOptions,
   SendTextOptions,
+  SendVideoOptions,
   StickerDefaults,
 } from '../types/common.js';
 
@@ -96,35 +99,31 @@ export class ChatSend {
   }
 
   image(
-    source: MediaSource,
-    caption?: string,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options?: SendImageOptions,
   ): Promise<void> {
-    return this.sender.image(source, caption, options);
+    return this.sender.image(source, options);
   }
 
   video(
-    source: MediaSource,
-    caption?: string,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options?: SendVideoOptions,
   ): Promise<void> {
-    return this.sender.video(source, caption, options);
+    return this.sender.video(source, options);
   }
 
   audio(
-    source: MediaSource,
-    asVoiceNote = false,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options?: SendAudioOptions,
   ): Promise<void> {
-    return this.sender.audio(source, asVoiceNote, options);
+    return this.sender.audio(source, options);
   }
 
   document(
-    source: MediaSource,
-    fileName?: string,
-    caption?: string,
+    source: MediaSource | null | undefined,
+    options?: SendDocumentOptions,
   ): Promise<void> {
-    return this.sender.document(source, fileName, caption);
+    return this.sender.document(source, options);
   }
 
   sticker(source: MediaSource, options?: CreateStickerOptions): Promise<void> {

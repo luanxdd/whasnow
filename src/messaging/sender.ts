@@ -13,10 +13,13 @@ import type { RateLimiter } from '../connection/rate-limiter.js';
 import type {
   CreateStickerOptions,
   Jid,
-  MediaSendOptions,
   MediaSource,
+  SendAudioOptions,
+  SendDocumentOptions,
+  SendImageOptions,
   SendPollOptions,
   SendTextOptions,
+  SendVideoOptions,
   StickerDefaults,
 } from '../types/common.js';
 
@@ -39,25 +42,31 @@ export class MessageSender {
   ) {}
 
   async audio(
-    source: MediaSource,
-    asVoiceNote = false,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options: SendAudioOptions = {},
   ): Promise<void> {
+    if (source == null) {
+      return;
+    }
+
     const audio = await resolveMedia(source);
 
     await this.dispatch({
       audio,
       mimetype: 'audio/mp4',
-      ptt: asVoiceNote,
-      viewOnce: options?.viewOnce,
+      ptt: options.voice ?? false,
+      viewOnce: options.viewOnce,
     });
   }
 
   async document(
-    source: MediaSource,
-    fileName?: string,
-    caption?: string,
+    source: MediaSource | null | undefined,
+    options: SendDocumentOptions = {},
   ): Promise<void> {
+    if (source == null) {
+      return;
+    }
+
     const path = typeof source === 'string' ? source : '';
 
     const document = await resolveMedia(source);
@@ -65,25 +74,33 @@ export class MessageSender {
     await this.dispatch({
       document,
 
-      fileName: fileName ?? (path ? fileNameFromPath(path) : 'file'),
+      fileName: options.fileName ?? (path ? fileNameFromPath(path) : 'file'),
 
       mimetype: path ? mimeTypeFromPath(path) : 'application/octet-stream',
 
-      caption,
+      caption: options.caption,
+
+      contextInfo: options.mentions
+        ? { mentionedJid: options.mentions }
+        : undefined,
     });
   }
 
   async image(
-    source: MediaSource,
-    caption?: string,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options: SendImageOptions = {},
   ): Promise<void> {
+    if (source == null) {
+      return;
+    }
+
     const image = await resolveMedia(source);
 
     await this.dispatch({
       image,
-      caption,
-      viewOnce: options?.viewOnce,
+      caption: options.caption,
+      viewOnce: options.viewOnce,
+      mentions: options.mentions,
     });
   }
 
@@ -117,16 +134,20 @@ export class MessageSender {
   }
 
   async video(
-    source: MediaSource,
-    caption?: string,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options: SendVideoOptions = {},
   ): Promise<void> {
+    if (source == null) {
+      return;
+    }
+
     const video = await resolveMedia(source);
 
     await this.dispatch({
       video,
-      caption,
-      viewOnce: options?.viewOnce,
+      caption: options.caption,
+      viewOnce: options.viewOnce,
+      mentions: options.mentions,
     });
   }
 

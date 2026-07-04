@@ -360,28 +360,81 @@ client.off('ready', onReady); // remove
 
 ## Enviando mensagens e mídia
 
-Tanto `ctx.chat`, `Chat` e `Message` expõem os mesmos métodos de envio:
+Tanto `ctx.chat.send`, `Chat.send` e `Message` (via `replyWith*`) expõem os mesmos métodos de envio, sempre no formato `(source, options?)`:
 
 ```ts
 await ctx.chat.send.text('Olá!', { mentions: [ctx.from.jid] });
-await ctx.chat.send.image('./foto.png', 'Legenda opcional');
-await ctx.chat.send.video('https://exemplo.com/video.mp4');
-await ctx.chat.send.audio('./audio.mp3', true); // true = nota de voz
-await ctx.chat.send.document('./relatorio.pdf', 'relatorio.pdf');
+
+await ctx.chat.send.image('./foto.png', { caption: 'Legenda opcional' });
+await ctx.chat.send.video('https://exemplo.com/video.mp4', { caption: 'Confira' });
+await ctx.chat.send.audio('./audio.mp3', { voice: true });
+await ctx.chat.send.document('./relatorio.pdf', {
+  fileName: 'relatorio.pdf',
+  caption: 'Segue o relatório',
+});
 await ctx.chat.send.sticker('./foto-qualquer.jpg'); // veja "Criando stickers" abaixo
 ```
 
-`MediaSource` aceita três formatos: caminho de arquivo local, URL (`http://`/`https://`) ou `Buffer` em memória.
+O mesmo vale para responder a uma mensagem recebida:
+
+```ts
+await ctx.message.replyWithImage(image, { caption: 'Legenda' });
+await ctx.message.replyWithAudio(audio, { voice: true });
+await ctx.message.replyWithDocument(file, {
+  fileName: 'Manual.pdf',
+  caption: 'Leia este arquivo',
+});
+```
+
+`MediaSource` aceita três formatos: caminho de arquivo local, URL (`http://`/`https://`) ou `Buffer` em memória. Todos os métodos de mídia também aceitam `MediaSource | null | undefined` — se `source` for `null` ou `undefined`, o método simplesmente não envia nada e resolve normalmente, sem lançar erro. Isso elimina o boilerplate de checar a mídia antes de enviar:
+
+```ts
+// Antes
+if (track.coverUrl) {
+  await message.replyWithImage(track.coverUrl);
+}
+
+// Agora
+await message.replyWithImage(track.coverUrl);
+```
+
+Essa abordagem foi escolhida em vez de lançar um erro porque "não há mídia para enviar" é um estado válido e comum (campo opcional ausente, resultado de uma busca que não encontrou nada, etc.) — forçar `try/catch` só devolveria o boilerplate que o recurso tenta remover. Note que isso vale só para `null`/`undefined`; uma string vazia ou um caminho inválido ainda geram erro normalmente, já que nesses casos há uma intenção de envio que falhou.
+
+### Opções por tipo de mídia
+
+Cada método tem sua própria interface de opções (`SendImageOptions`, `SendVideoOptions`, `SendAudioOptions`, `SendDocumentOptions`), em vez de um único objeto genérico com campos que não fazem sentido para todo tipo de mídia:
+
+```ts
+interface SendImageOptions {
+  caption?: string;
+  viewOnce?: boolean;
+  mentions?: Jid[];
+}
+
+interface SendAudioOptions {
+  voice?: boolean;
+  viewOnce?: boolean;
+}
+
+interface SendDocumentOptions {
+  fileName?: string;
+  caption?: string;
+  mentions?: Jid[];
+}
+```
+
+`SendAudioOptions` não tem `caption`/`mentions` de propósito: o WhatsApp não exibe legenda nem menções em áudios, então incluir esses campos ali seria um "silêncio ambíguo" (a opção existiria mas nunca faria nada).
 
 ### Mensagens "ver uma vez" (view-once)
 
-`image`, `video` e `audio` aceitam um terceiro parâmetro de opções com `viewOnce`:
+`image`, `video` e `audio` aceitam `viewOnce` dentro do objeto de opções:
 
 ```ts
-await ctx.chat.send.image('./foto.png', 'Some uma vez você vê', {
+await ctx.chat.send.image('./foto.png', {
+  caption: 'Some uma vez você vê',
   viewOnce: true,
 });
-await ctx.chat.send.video('./clipe.mp4', undefined, { viewOnce: true });
+await ctx.chat.send.video('./clipe.mp4', { viewOnce: true });
 ```
 
 Para detectar se uma mensagem **recebida** é view-once ou efêmera (mensagens temporárias):

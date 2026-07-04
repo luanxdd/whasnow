@@ -15,11 +15,14 @@ import type { RateLimiter } from '../connection/rate-limiter.js';
 import type {
   CreateStickerOptions,
   Jid,
-  MediaSendOptions,
   MediaSource,
   MessageId,
   PollVote,
+  SendAudioOptions,
+  SendDocumentOptions,
+  SendImageOptions,
   SendTextOptions,
+  SendVideoOptions,
   StickerDefaults,
 } from '../types/common.js';
 
@@ -189,35 +192,31 @@ export class Message {
   }
 
   replyWithImage(
-    source: MediaSource,
-    caption?: string,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options?: SendImageOptions,
   ): Promise<void> {
-    return this.sender.image(source, caption, options);
+    return this.sender.image(source, options);
   }
 
   replyWithVideo(
-    source: MediaSource,
-    caption?: string,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options?: SendVideoOptions,
   ): Promise<void> {
-    return this.sender.video(source, caption, options);
+    return this.sender.video(source, options);
   }
 
   replyWithAudio(
-    source: MediaSource,
-    asVoiceNote = false,
-    options?: MediaSendOptions,
+    source: MediaSource | null | undefined,
+    options?: SendAudioOptions,
   ): Promise<void> {
-    return this.sender.audio(source, asVoiceNote, options);
+    return this.sender.audio(source, options);
   }
 
   replyWithDocument(
-    source: MediaSource,
-    fileName?: string,
-    caption?: string,
+    source: MediaSource | null | undefined,
+    options?: SendDocumentOptions,
   ): Promise<void> {
-    return this.sender.document(source, fileName, caption);
+    return this.sender.document(source, options);
   }
 
   replyWithSticker(
