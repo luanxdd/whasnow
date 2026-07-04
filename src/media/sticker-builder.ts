@@ -21,7 +21,10 @@ import type {
 
 import { resolveMediaBuffer } from '../utils/media.js';
 
-import { injectStickerExif } from './sticker-exif.js';
+import {
+  injectAnimatedStickerExif,
+  injectStickerExif,
+} from './sticker-exif.js';
 import { sniffMedia } from './sniff.js';
 
 const require = createRequire(import.meta.url);
@@ -47,6 +50,16 @@ const ANIMATED_QUALITY_LEVELS: ReadonlyArray<{
   { quality: 35, fps: ANIMATED_FPS },
   { quality: 35, fps: 8 },
   { quality: 25, fps: 6 },
+];
+
+const ANIMATED_WEBP_REBUILD_LEVELS: ReadonlyArray<{
+  quality: number;
+  pagesFraction: number;
+}> = [
+  { quality: 70, pagesFraction: 1 },
+  { quality: 45, pagesFraction: 1 },
+  { quality: 45, pagesFraction: 0.6 },
+  { quality: 30, pagesFraction: 0.4 },
 ];
 
 export async function buildSticker(
@@ -75,51 +88,51 @@ export async function buildSticker(
     return input;
   }
 
-  if (
-    sniff.mimeType === 'image/webp' &&
-    sniff.isAnimated &&
-    input.length <= MAX_ANIMATED_BYTES &&
-    (await isCompliantStickerCanvas(input))
-  ) {
-    return wantsMetadata
-      ? injectStickerExif(input, {
-          packName: options.packName ?? 'WhaSnow',
-          authorName: options.authorName ?? '',
-          categories:
-            options.categories?.length
-              ? options.categories
-              : ['🏹'],
-        })
-      : input;
-  }
-
   if (sniff.mimeType === 'image/webp' && sniff.isAnimated) {
-    throw new StickerBuildError(
-      'Este webp animado não está no formato que o WhatsApp exige ' +
-      '(quadrado 512x512, até ~500KB); a WhaSnow ainda não sabe ' +
-      'redimensionar/recomprimir um webp já animado vindo de outro ' +
-      'tamanho — só reaproveitar um que já está nesse formato.',
-    );
+    const alreadyCompliant =
+      input.length <= MAX_ANIMATED_BYTES &&
+      (await isCompliantStickerCanvas(input));
+
+    const webp = alreadyCompliant
+      ? input
+      : await rebuildAnimatedWebp(input, options);
+
+    return attachMetadataIfNeeded(webp, true, options, wantsMetadata);
   }
 
-  const webp =
+  const isGifOrVideo =
     sniff.mimeType === 'image/gif' ||
-    sniff.mimeType.startsWith('video/')
-      ? await renderAnimatedWebp(input, options)
-      : await renderStaticWebp(input, options);
+    sniff.mimeType.startsWith('video/');
 
+  const webp = isGifOrVideo
+    ? await renderAnimatedWebp(input, options)
+    : await renderStaticWebp(input, options);
+
+  return attachMetadataIfNeeded(webp, isGifOrVideo, options, wantsMetadata);
+}
+
+async function attachMetadataIfNeeded(
+  webp: Buffer,
+  isAnimatedOutput: boolean,
+  options: CreateStickerOptions,
+  wantsMetadata: boolean,
+): Promise<Buffer> {
   if (!wantsMetadata) {
     return webp;
   }
 
-  return injectStickerExif(webp, {
+  const exifData = {
     packName: options.packName ?? 'WhaSnow',
     authorName: options.authorName ?? '',
     categories:
       options.categories?.length
         ? options.categories
         : ['🏹'],
-  });
+  };
+
+  return isAnimatedOutput
+    ? injectAnimatedStickerExif(webp, exifData)
+    : injectStickerExif(webp, exifData);
 }
 
 async function isCompliantStickerCanvas(
@@ -188,6 +201,63 @@ async function renderStaticWebp(
 
     throw new StickerBuildError(
       'Failed to build a static sticker from the provided image.',
+      { cause: err },
+    );
+  }
+}
+
+async function rebuildAnimatedWebp(
+  input: Buffer,
+  options: CreateStickerOptions,
+): Promise<Buffer> {
+  const fit: 'contain' | 'cover' =
+    options.crop === 'cover'
+      ? 'cover'
+      : 'contain';
+
+  const background =
+    options.backgroundColor ?? 'rgba(0,0,0,0)';
+
+  try {
+    const totalPages =
+      (await sharp(input, { animated: true }).metadata()).pages ?? 1;
+
+    let lastSize = 0;
+
+    for (const level of ANIMATED_WEBP_REBUILD_LEVELS) {
+      const pages = Math.max(
+        1,
+        Math.round(totalPages * level.pagesFraction),
+      );
+
+      const output = await sharp(input, {
+        animated: true,
+        pages,
+        limitInputPixels: false,
+      })
+        .resize(STICKER_SIZE, STICKER_SIZE, { fit, background })
+        .webp({ quality: level.quality, loop: 0 })
+        .toBuffer();
+
+      lastSize = output.length;
+
+      if (output.length <= MAX_ANIMATED_BYTES) {
+        return output;
+      }
+    }
+
+    throw new StickerBuildError(
+      `The generated animated sticker is still ${Math.round(lastSize / 1024)}KB ` +
+      `after reducing quality and trimming frames, above WhatsApp's ` +
+      `~${Math.round(MAX_ANIMATED_BYTES / 1024)}KB limit. Try a shorter or lower-motion sticker.`,
+    );
+  } catch (err) {
+    if (err instanceof StickerBuildError) {
+      throw err;
+    }
+
+    throw new StickerBuildError(
+      'Failed to resize/recompress an existing animated webp sticker.',
       { cause: err },
     );
   }
