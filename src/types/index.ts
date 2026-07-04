@@ -1,4 +1,5 @@
 export type {
+  Awaitable,
   GroupInfo,
   GroupJoinRequest,
   GroupJoinRequestResult,
@@ -8,10 +9,6 @@ export type {
   PhoneNumber,
 } from './common.js';
 
-export type {
-  WhaSnowConfig,
-} from './config.js';
+export type { WhaSnowConfig } from './config.js';
 
-export type {
-  WhaSnowEventMap,
-} from './events.js';
+export type { WhaSnowEventMap } from './events.js';

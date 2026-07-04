@@ -2,10 +2,7 @@ import type { WASocket } from '@whiskeysockets/baileys';
 
 import { MessageSendError } from '../errors/index.js';
 
-import type {
-  MediaSource,
-  PostStatusOptions,
-} from '../types/common.js';
+import type { MediaSource, PostStatusOptions } from '../types/common.js';
 
 import { resolveMedia } from '../utils/media.js';
 
@@ -14,10 +11,7 @@ const STATUS_BROADCAST_JID = 'status@broadcast';
 export class StatusManager {
   constructor(private readonly socket: WASocket) {}
 
-  async text(
-    body: string,
-    options: PostStatusOptions,
-  ): Promise<void> {
+  async text(body: string, options: PostStatusOptions): Promise<void> {
     const raw = await this.socket.sendMessage(
       STATUS_BROADCAST_JID,
       { text: body },
@@ -34,10 +28,7 @@ export class StatusManager {
     }
   }
 
-  async image(
-    source: MediaSource,
-    options: PostStatusOptions,
-  ): Promise<void> {
+  async image(source: MediaSource, options: PostStatusOptions): Promise<void> {
     const image = await resolveMedia(source);
 
     const raw = await this.socket.sendMessage(
@@ -55,10 +46,7 @@ export class StatusManager {
     }
   }
 
-  async video(
-    source: MediaSource,
-    options: PostStatusOptions,
-  ): Promise<void> {
+  async video(source: MediaSource, options: PostStatusOptions): Promise<void> {
     const video = await resolveMedia(source);
 
     const raw = await this.socket.sendMessage(

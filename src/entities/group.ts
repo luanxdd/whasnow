@@ -1,7 +1,4 @@
-import type {
-  GroupMetadata,
-  WASocket,
-} from '@whiskeysockets/baileys';
+import type { GroupMetadata, WASocket } from '@whiskeysockets/baileys';
 
 import { GroupMetadataCache } from './group-metadata-cache.js';
 import { Member } from './member.js';
@@ -30,46 +27,30 @@ export class Group {
   ) {}
 
   member(jid: Jid): Member {
-    return new Member(
-      this.socket,
-      this.id,
-      jid,
-      this.muteStore,
-    );
+    return new Member(this.socket, this.id, jid, this.muteStore);
   }
 
   async members(): Promise<Member[]> {
     const { participants } = await this.metadata();
 
-    return participants.map(
-      ({ id }) => this.member(id),
-    );
+    return participants.map(({ id }) => this.member(id));
   }
 
   async admins(): Promise<Member[]> {
     const { participants } = await this.metadata();
 
     return participants
-      .filter(
-        ({ admin }) =>
-          admin === 'admin' ||
-          admin === 'superadmin',
-      )
-      .map(
-        ({ id }) => this.member(id),
-      );
+      .filter(({ admin }) => admin === 'admin' || admin === 'superadmin')
+      .map(({ id }) => this.member(id));
   }
 
   async isAdmin(jid: Jid): Promise<boolean> {
     const { participants } = await this.metadata();
 
-    const participant = participants.find(
-      (member) => member.id === jid,
-    );
+    const participant = participants.find((member) => member.id === jid);
 
     return (
-      participant?.admin === 'admin' ||
-      participant?.admin === 'superadmin'
+      participant?.admin === 'admin' || participant?.admin === 'superadmin'
     );
   }
 
@@ -88,8 +69,7 @@ export class Group {
   }
 
   async refresh(): Promise<GroupMetadata> {
-    const metadata =
-      await this.socket.groupMetadata(this.id);
+    const metadata = await this.socket.groupMetadata(this.id);
 
     this.metadataCache?.set(this.id, metadata);
 
@@ -105,9 +85,7 @@ export class Group {
       description: metadata.desc ?? null,
       owner: metadata.owner ?? null,
 
-      createdAt: metadata.creation
-        ? new Date(metadata.creation * 1000)
-        : null,
+      createdAt: metadata.creation ? new Date(metadata.creation * 1000) : null,
 
       memberCount: metadata.participants.length,
       isLocked: metadata.restrict ?? false,
@@ -116,36 +94,21 @@ export class Group {
   }
 
   setName(name: string): Promise<void> {
-    return this.socket.groupUpdateSubject(
-      this.id,
-      name,
-    );
+    return this.socket.groupUpdateSubject(this.id, name);
   }
 
-  setDescription(
-    description: string,
-  ): Promise<void> {
-    return this.socket.groupUpdateDescription(
-      this.id,
-      description,
-    );
+  setDescription(description: string): Promise<void> {
+    return this.socket.groupUpdateDescription(this.id, description);
   }
 
-  async setProfilePicture(
-    source: MediaSource,
-  ): Promise<void> {
+  async setProfilePicture(source: MediaSource): Promise<void> {
     const buffer = await resolveMedia(source);
 
-    await this.socket.updateProfilePicture(
-      this.id,
-      buffer as Buffer,
-    );
+    await this.socket.updateProfilePicture(this.id, buffer as Buffer);
   }
 
   removeProfilePicture(): Promise<void> {
-    return this.socket.removeProfilePicture(
-      this.id,
-    );
+    return this.socket.removeProfilePicture(this.id);
   }
 
   setLocked(locked: boolean): Promise<void> {
@@ -155,14 +118,10 @@ export class Group {
     );
   }
 
-  setAnnouncementOnly(
-    enabled: boolean,
-  ): Promise<void> {
+  setAnnouncementOnly(enabled: boolean): Promise<void> {
     return this.socket.groupSettingUpdate(
       this.id,
-      enabled
-        ? 'announcement'
-        : 'not_announcement',
+      enabled ? 'announcement' : 'not_announcement',
     );
   }
 
@@ -175,25 +134,15 @@ export class Group {
   }
 
   async inviteLink(): Promise<string> {
-    const code =
-      await this.socket.groupInviteCode(
-        this.id,
-      );
+    const code = await this.socket.groupInviteCode(this.id);
 
-    return code
-      ? `https://chat.whatsapp.com/${code}`
-      : '';
+    return code ? `https://chat.whatsapp.com/${code}` : '';
   }
 
   async revokeInviteLink(): Promise<string> {
-    const code =
-      await this.socket.groupRevokeInvite(
-        this.id,
-      );
+    const code = await this.socket.groupRevokeInvite(this.id);
 
-    return code
-      ? `https://chat.whatsapp.com/${code}`
-      : '';
+    return code ? `https://chat.whatsapp.com/${code}` : '';
   }
 
   leave(): Promise<void> {
@@ -201,38 +150,25 @@ export class Group {
   }
 
   async add(participants: Jid[]): Promise<void> {
-    await this.socket.groupParticipantsUpdate(
-      this.id,
-      participants,
-      'add',
-    );
+    await this.socket.groupParticipantsUpdate(this.id, participants, 'add');
   }
 
   async joinRequests(): Promise<GroupJoinRequest[]> {
-    const requests =
-      await this.socket.groupRequestParticipantsList(
-        this.id,
-      );
+    const requests = await this.socket.groupRequestParticipantsList(this.id);
 
-    return requests.map((request: any) => ({
+    return requests.map((request) => ({
       jid: request.jid,
       requestMethod: request.request_method,
 
-      requestedAt: new Date(
-        Number(request.request_time) * 1000,
-      ),
+      requestedAt: new Date(Number(request.request_time) * 1000),
     }));
   }
 
-  approveJoinRequests(
-    jids: Jid[],
-  ): Promise<GroupJoinRequestResult[]> {
+  approveJoinRequests(jids: Jid[]): Promise<GroupJoinRequestResult[]> {
     return this.manageJoinRequests(jids, 'approve');
   }
 
-  rejectJoinRequests(
-    jids: Jid[],
-  ): Promise<GroupJoinRequestResult[]> {
+  rejectJoinRequests(jids: Jid[]): Promise<GroupJoinRequestResult[]> {
     return this.manageJoinRequests(jids, 'reject');
   }
 
@@ -240,12 +176,11 @@ export class Group {
     jids: Jid[],
     action: 'approve' | 'reject',
   ): Promise<GroupJoinRequestResult[]> {
-    const results =
-      await this.socket.groupRequestParticipantsUpdate(
-        this.id,
-        jids,
-        action,
-      );
+    const results = await this.socket.groupRequestParticipantsUpdate(
+      this.id,
+      jids,
+      action,
+    );
 
     return results.map((result) => ({
       jid: result.jid!,

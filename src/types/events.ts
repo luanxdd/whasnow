@@ -5,7 +5,6 @@ import type { CallStatus } from './common.js';
 export interface MessageReceivedPayload {
   chatId: string;
   senderId: string;
-
   timestamp: number;
   isGroup: boolean;
 }
@@ -18,13 +17,7 @@ export interface ConnectionClosePayload {
 
 export interface GroupParticipantPayload {
   groupId: string;
-
-  action:
-    | 'add'
-    | 'remove'
-    | 'promote'
-    | 'demote';
-
+  action: 'add' | 'remove' | 'promote' | 'demote';
   participants: string[];
 }
 
@@ -41,7 +34,6 @@ export interface PairingCodePayload {
 export interface PresencePayload {
   chatId: string;
   participantId: string;
-
   presence:
     | 'available'
     | 'unavailable'

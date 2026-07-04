@@ -52,13 +52,13 @@ Requer **Node.js 20+** e **TypeScript 5+** (a biblioteca é distribuída com tip
 
 ## Conceitos principais
 
-| Conceito | O que é |
-|---|---|
-| `Client` | Ponto de entrada. Gerencia conexão, sessão e despacha mensagens. |
-| `Context` (`ctx`) | Tudo que você precisa sobre uma mensagem recebida: quem enviou, de onde, e como responder. |
+| Conceito                             | O que é                                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `Client`                             | Ponto de entrada. Gerencia conexão, sessão e despacha mensagens.                                                    |
+| `Context` (`ctx`)                    | Tudo que você precisa sobre uma mensagem recebida: quem enviou, de onde, e como responder.                          |
 | `Chat`, `Group`, `Member`, `Contact` | Entidades que representam conversas, grupos, participantes e contatos — cada uma com seus próprios métodos de ação. |
-| `CommandRouter` | Roteador opcional de comandos baseado em prefixo (`!ping`, `!ban`, etc). |
-| Erros tipados | Toda falha previsível da biblioteca é uma subclasse de `WhaSnowError`, nunca um `Error` genérico. |
+| `CommandRouter`                      | Roteador opcional de comandos baseado em prefixo (`!ping`, `!ban`, etc).                                            |
+| Erros tipados                        | Toda falha previsível da biblioteca é uma subclasse de `WhaSnowError`, nunca um `Error` genérico.                   |
 
 ---
 
@@ -69,7 +69,7 @@ import { Client } from 'whasnow';
 
 const client = new Client({
   phoneNumber: '5511999999999',
-  authDir: './sessao',       // onde a sessão autenticada é salva
+  authDir: './sessao', // onde a sessão autenticada é salva
   logLevel: 'warn',
 });
 
@@ -112,21 +112,21 @@ O `ctx` (Context) é o objeto central — a partir dele você acessa tudo sobre 
 
 ```ts
 client.onMessage(async (ctx) => {
-  ctx.message.text;       // texto da mensagem
-  ctx.message.isMedia;    // se é imagem/vídeo/áudio/documento/sticker
-  ctx.isGroup;            // se veio de um grupo
-  ctx.from.jid;           // quem enviou
-  ctx.message.quoted;     // mensagem citada (reply), se houver
-  ctx.message.mentions;   // JIDs mencionados na mensagem
+  ctx.message.text; // texto da mensagem
+  ctx.message.isMedia; // se é imagem/vídeo/áudio/documento/sticker
+  ctx.isGroup; // se veio de um grupo
+  ctx.from.jid; // quem enviou
+  ctx.message.quoted; // mensagem citada (reply), se houver
+  ctx.message.mentions; // JIDs mencionados na mensagem
 });
 ```
 
 ### Respondendo
 
 ```ts
-await ctx.reply('Recebido!');           // cita a mensagem original
-await ctx.send('Mensagem solta');       // envia sem citar
-await ctx.react('🔥');                  // reage com emoji
+await ctx.reply('Recebido!'); // cita a mensagem original
+await ctx.send('Mensagem solta'); // envia sem citar
+await ctx.react('🔥'); // reage com emoji
 ```
 
 ### Aguardando uma resposta
@@ -175,16 +175,16 @@ const router = client.commands({ prefix: '!' });
 
 router.register({
   name: 'ping',
-  async execute(ctx) {
-    await ctx.reply('pong 🏓');
+  execute(ctx) {
+    return ctx.reply('pong 🏓');
   },
 });
 
 router.register({
   name: 'ban',
-  onlyGroup: true,        // só funciona dentro de grupos
-  onlyAdmin: true,        // só quem é admin do grupo pode rodar
-  cooldownMs: 3_000,      // 3s de cooldown por usuário
+  onlyGroup: true, // só funciona dentro de grupos
+  onlyAdmin: true, // só quem é admin do grupo pode rodar
+  cooldownMs: 3_000, // 3s de cooldown por usuário
   async execute(ctx, args) {
     const targets = ctx.targets(); // menções + quem foi citado no reply
     // ...
@@ -192,12 +192,14 @@ router.register({
 });
 ```
 
+`execute` aceita `async`/`await` normalmente, mas também pode retornar a Promise direto (`return ctx.reply(...)`) — o router só aguarda o resultado, sem se importar com o valor.
+
 Para comandos simples, `router.registerMap()` evita repetir `name` dentro do objeto — a chave já é o nome do comando, e um valor que é só função vira o `execute`:
 
 ```ts
 router.registerMap({
-  ping: async (ctx) => {
-    await ctx.reply('pong 🏓');
+  ping: (ctx) => {
+    return ctx.reply('pong 🏓');
   },
 
   ban: {
@@ -253,9 +255,9 @@ Use `onBlocked` quando quiser controlar a mensagem (ou parte dela):
 ```ts
 client.commands({
   prefix: '!',
-  onBlocked: async (ctx, reason, command) => {
+  onBlocked: (ctx, reason, command) => {
     if (reason === 'admin') {
-      await ctx.reply(`Só admins podem usar !${command.name}.`);
+      return ctx.reply(`Só admins podem usar !${command.name}.`);
     }
   },
 });
@@ -268,8 +270,8 @@ Se o `execute()` de um comando lançar um erro, use `onError` para tratá-lo —
 ```ts
 client.commands({
   prefix: '!',
-  onError: async (err, ctx, command) => {
-    await ctx.reply('Deu ruim ao executar esse comando');
+  onError: (err, ctx, command) => {
+    return ctx.reply('Deu ruim ao executar esse comando');
   },
 });
 ```
@@ -290,16 +292,16 @@ Um único arquivo pode exportar mais de um comando:
 
 ```ts
 // commands/moderation/sanction.ts
-export const ban: CommandDefinition = { name: 'ban', /* ... */ };
-export const unban: CommandDefinition = { name: 'unban', /* ... */ };
+export const ban: CommandDefinition = { name: 'ban' /* ... */ };
+export const unban: CommandDefinition = { name: 'unban' /* ... */ };
 ```
 
 Arquivos `*.test.ts`, `*.spec.ts` e `*.d.ts` são ignorados automaticamente. Outras opções:
 
 ```ts
 await router.loadCommands(new URL('./commands', import.meta.url), {
-  recursive: true,        // varre subpastas (padrão: true)
-  extensions: ['.ts'],    // extensões aceitas (padrão: .js, .mjs, .cjs, .ts, .mts, .cts)
+  recursive: true, // varre subpastas (padrão: true)
+  extensions: ['.ts'], // extensões aceitas (padrão: .js, .mjs, .cjs, .ts, .mts, .cts)
 
   filter: (command, filePath) => {
     // retorne false para pular um comando específico
@@ -343,7 +345,9 @@ client.onMessage(async (ctx) => {
 Todo `on`/`onMessage` tem seu par de remoção:
 
 ```ts
-const handler = (ctx) => { /* ... */ };
+const handler = (ctx) => {
+  /* ... */
+};
 
 client.onMessage(handler);
 client.offMessage(handler); // remove
@@ -374,34 +378,39 @@ await ctx.chat.send.sticker('./foto-qualquer.jpg'); // veja "Criando stickers" a
 `image`, `video` e `audio` aceitam um terceiro parâmetro de opções com `viewOnce`:
 
 ```ts
-await ctx.chat.send.image('./foto.png', 'Some uma vez você vê', { viewOnce: true });
+await ctx.chat.send.image('./foto.png', 'Some uma vez você vê', {
+  viewOnce: true,
+});
 await ctx.chat.send.video('./clipe.mp4', undefined, { viewOnce: true });
 ```
-
 
 Para detectar se uma mensagem **recebida** é view-once ou efêmera (mensagens temporárias):
 
 ```ts
 client.onMessage(async (ctx) => {
-  if (ctx.message.isViewOnce) { /* ... */ }
-  if (ctx.message.isEphemeral) { /* ... */ }
+  if (ctx.message.isViewOnce) {
+    /* ... */
+  }
+  if (ctx.message.isEphemeral) {
+    /* ... */
+  }
 });
 ```
 
 ### Indicadores de digitação
 
 ```ts
-await ctx.chat.typing();      // "digitando..."
-await ctx.chat.recording();   // "gravando áudio..."
-await ctx.chat.stopTyping();  // remove o indicador
+await ctx.chat.typing(); // "digitando..."
+await ctx.chat.recording(); // "gravando áudio..."
+await ctx.chat.stopTyping(); // remove o indicador
 ```
 
 ### Ações sobre uma mensagem específica
 
 ```ts
 await ctx.message.edit('Texto corrigido');
-await ctx.message.delete();           // apaga para todos
-await ctx.message.pin();              // fixa no chat
+await ctx.message.delete(); // apaga para todos
+await ctx.message.pin(); // fixa no chat
 await ctx.message.forward(outroJid);
 const buffer = await ctx.message.downloadMedia();
 ```
@@ -426,10 +435,10 @@ O limite é por `Client` (conta), não por chat — então enviar para 10 chats 
 `send.sticker()` não exige mais um `.webp` pronto: aceita **qualquer imagem, gif ou vídeo** (caminho, URL ou `Buffer`) e monta a figurinha pra você — redimensiona pro quadrado 512x512 que o WhatsApp espera, converte pra webp e, se for gif/vídeo, gera uma figurinha animada.
 
 ```ts
-await ctx.chat.send.sticker('./foto.jpg');           // imagem comum -> sticker estático
-await ctx.chat.send.sticker('./meme.gif');            // gif -> sticker animado
+await ctx.chat.send.sticker('./foto.jpg'); // imagem comum -> sticker estático
+await ctx.chat.send.sticker('./meme.gif'); // gif -> sticker animado
 await ctx.chat.send.sticker('https://exemplo.com/x.png');
-await ctx.message.replyWithSticker('./foto.jpg');     // cita a mensagem original
+await ctx.message.replyWithSticker('./foto.jpg'); // cita a mensagem original
 ```
 
 Se a mídia já for um `.webp` estático dentro dos limites do WhatsApp, a WhaSnow não reprocessa — só envia direto.
@@ -503,7 +512,7 @@ await group.member(jid).remove();
 
 await group.setName('Novo nome');
 await group.open(); // só admins enviam mensagens
-await group.close(); // todos enviam mensagem 
+await group.close(); // todos enviam mensagem
 await group.inviteLink();
 await group.info(); // nome, descrição, dono, criação, etc.
 await group.setLocked(true); // só admins editam infos do grupo
@@ -549,7 +558,7 @@ E use a partir de qualquer `Member`:
 
 ```ts
 await group.member(jid).mute({ duration: 3_600_000 }); // 1 hora em ms
-await group.member(jid).mute();                        // sem expiração
+await group.member(jid).mute(); // sem expiração
 await group.member(jid).unmute();
 group.member(jid).isMuted();
 ```
@@ -571,9 +580,12 @@ const poll = await ctx.chat.send.poll(
 Ouça os votos chegarem em tempo real:
 
 ```ts
-client.on('poll.vote', ({ chatId, pollMessageId, voterJid, selectedOptions }) => {
-  console.log(`${voterJid} votou em: ${selectedOptions.join(', ')}`);
-});
+client.on(
+  'poll.vote',
+  ({ chatId, pollMessageId, voterJid, selectedOptions }) => {
+    console.log(`${voterJid} votou em: ${selectedOptions.join(', ')}`);
+  },
+);
 ```
 
 Ou agregue os votos recebidos até agora a partir da própria mensagem da poll:
@@ -679,23 +691,23 @@ try {
 
 ### Erros disponíveis
 
-| Classe | `code` | Quando ocorre |
-|---|---|---|
-| `AlreadyStartedError` | `CLIENT_ALREADY_STARTED` | `client.start()` chamado mais de uma vez |
-| `NotStartedError` | `CLIENT_NOT_STARTED` | Operação que precisa de conexão ativa, chamada antes de `start()` |
-| `PairingCodeError` | `PAIRING_CODE_FAILED` | Falha ao gerar/solicitar o código de pareamento |
-| `ConnectionError` | `CONNECTION_FAILED` | Falha de conexão não recuperável, ou timeout em `waitUntilReady()` |
-| `GroupContextError` | `GROUP_CONTEXT_REQUIRED` | `ctx.requireGroup()` chamado fora de um grupo |
-| `ModerationStoreUnavailableError` | `MODERATION_STORE_UNAVAILABLE` | Mute nativo usado sem `moderationDbPath` configurado |
-| `MessageSendError` | `MESSAGE_SEND_FAILED` | O envio de uma mensagem falhou silenciosamente |
-| `MediaDownloadError` | `MEDIA_DOWNLOAD_FAILED` | Download de mídia de uma mensagem falhou |
-| `InvalidMediaSourceError` | `INVALID_MEDIA_SOURCE` | Caminho de arquivo/URL inválido ao enviar mídia |
-| `PollVoteDecryptError` | `POLL_VOTE_DECRYPT_FAILED` | Falha ao decifrar um voto de poll recebido (mensagem de criação da poll não encontrada no store interno) |
-| `StickerBuildError` | `STICKER_BUILD_FAILED` | Não foi possível transformar a mídia de origem em uma figurinha válida (mídia inválida, ou resultado acima do limite de tamanho do WhatsApp mesmo após a compressão automática) |
-| `ReplyTimeoutError` | `REPLY_TIMEOUT` | `waitForReply()` não recebeu resposta a tempo |
-| `WaitForReplyUnavailableError` | `WAIT_FOR_REPLY_UNAVAILABLE` | `ctx.waitForReply()` chamado num `Context` criado manualmente, sem referência ao `Client` |
-| `CommandDirectoryNotFoundError` | `COMMAND_DIRECTORY_NOT_FOUND` | `router.loadCommands()` apontado para um diretório que não existe |
-| `CommandLoadError` | `COMMAND_LOAD_FAILED` | Um arquivo de comando falhou ao ser importado por `router.loadCommands()` (erro de sintaxe, dependência ausente, etc) — `err.path` aponta para o arquivo |
+| Classe                            | `code`                         | Quando ocorre                                                                                                                                                                   |
+| --------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AlreadyStartedError`             | `CLIENT_ALREADY_STARTED`       | `client.start()` chamado mais de uma vez                                                                                                                                        |
+| `NotStartedError`                 | `CLIENT_NOT_STARTED`           | Operação que precisa de conexão ativa, chamada antes de `start()`                                                                                                               |
+| `PairingCodeError`                | `PAIRING_CODE_FAILED`          | Falha ao gerar/solicitar o código de pareamento                                                                                                                                 |
+| `ConnectionError`                 | `CONNECTION_FAILED`            | Falha de conexão não recuperável, ou timeout em `waitUntilReady()`                                                                                                              |
+| `GroupContextError`               | `GROUP_CONTEXT_REQUIRED`       | `ctx.requireGroup()` chamado fora de um grupo                                                                                                                                   |
+| `ModerationStoreUnavailableError` | `MODERATION_STORE_UNAVAILABLE` | Mute nativo usado sem `moderationDbPath` configurado                                                                                                                            |
+| `MessageSendError`                | `MESSAGE_SEND_FAILED`          | O envio de uma mensagem falhou silenciosamente                                                                                                                                  |
+| `MediaDownloadError`              | `MEDIA_DOWNLOAD_FAILED`        | Download de mídia de uma mensagem falhou                                                                                                                                        |
+| `InvalidMediaSourceError`         | `INVALID_MEDIA_SOURCE`         | Caminho de arquivo/URL inválido ao enviar mídia                                                                                                                                 |
+| `PollVoteDecryptError`            | `POLL_VOTE_DECRYPT_FAILED`     | Falha ao decifrar um voto de poll recebido (mensagem de criação da poll não encontrada no store interno)                                                                        |
+| `StickerBuildError`               | `STICKER_BUILD_FAILED`         | Não foi possível transformar a mídia de origem em uma figurinha válida (mídia inválida, ou resultado acima do limite de tamanho do WhatsApp mesmo após a compressão automática) |
+| `ReplyTimeoutError`               | `REPLY_TIMEOUT`                | `waitForReply()` não recebeu resposta a tempo                                                                                                                                   |
+| `WaitForReplyUnavailableError`    | `WAIT_FOR_REPLY_UNAVAILABLE`   | `ctx.waitForReply()` chamado num `Context` criado manualmente, sem referência ao `Client`                                                                                       |
+| `CommandDirectoryNotFoundError`   | `COMMAND_DIRECTORY_NOT_FOUND`  | `router.loadCommands()` apontado para um diretório que não existe                                                                                                               |
+| `CommandLoadError`                | `COMMAND_LOAD_FAILED`          | Um arquivo de comando falhou ao ser importado por `router.loadCommands()` (erro de sintaxe, dependência ausente, etc) — `err.path` aponta para o arquivo                        |
 
 Todas estendem `WhaSnowError`, então `catch (err) { if (err instanceof WhaSnowError) }` cobre qualquer uma delas de uma vez.
 
@@ -705,25 +717,26 @@ Todas estendem `WhaSnowError`, então `catch (err) { if (err instanceof WhaSnowE
 
 ```ts
 interface WhaSnowConfig {
-  phoneNumber: string;              // obrigatório
+  phoneNumber: string; // obrigatório
 
-  authDir?: string;                 // padrão: './whasnow-session'
-  browserName?: string;             // padrão: 'Safari'
+  authDir?: string; // padrão: './whasnow-session'
+  browserName?: string; // padrão: 'Safari'
 
-  markOnlineOnConnect?: boolean;    // padrão: true
+  markOnlineOnConnect?: boolean; // padrão: true
   generateHighQualityLinkPreview?: boolean; // padrão: true
-  syncFullHistory?: boolean;        // padrão: false
+  syncFullHistory?: boolean; // padrão: false
 
-  maxReconnectAttempts?: number;    // padrão: 5
-  reconnectBaseDelayMs?: number;    // padrão: 3000
+  maxReconnectAttempts?: number; // padrão: 5
+  reconnectBaseDelayMs?: number; // padrão: 3000
 
-  sendIntervalMs?: number;          // padrão: 250 (~4 msg/s). 0 desabilita.
+  sendIntervalMs?: number; // padrão: 250 (~4 msg/s). 0 desabilita.
 
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent'; // padrão: 'warn'
 
-  moderationDbPath?: string;        // habilita o mute nativo (ver seção acima)
+  moderationDbPath?: string; // habilita o mute nativo (ver seção acima)
 
-  stickerDefaults?: {                // branding padrão aplicado a send.sticker()
+  stickerDefaults?: {
+    // branding padrão aplicado a send.sticker()
     packName?: string;
     authorName?: string;
   };

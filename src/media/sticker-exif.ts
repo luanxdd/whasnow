@@ -11,18 +11,11 @@ export interface StickerExifData {
 }
 
 const EXIF_HEADER = Buffer.from([
-  0x49, 0x49, 0x2a, 0x00,
-  0x08, 0x00, 0x00, 0x00,
-  0x01, 0x00,
-  0x41, 0x57, 0x07, 0x00,
-  0x00, 0x00, 0x00, 0x00,
-  0x16, 0x00, 0x00, 0x00,
+  0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00,
 ]);
 
-function stickerPackId(
-  packName: string,
-  authorName: string,
-): string {
+function stickerPackId(packName: string, authorName: string): string {
   const raw = `${packName}::${authorName}`;
 
   let hash = 0;
@@ -37,10 +30,7 @@ function stickerPackId(
 function buildExifPayload(data: StickerExifData): Buffer {
   const payload = Buffer.from(
     JSON.stringify({
-      'sticker-pack-id': stickerPackId(
-        data.packName,
-        data.authorName,
-      ),
+      'sticker-pack-id': stickerPackId(data.packName, data.authorName),
       'sticker-pack-name': data.packName,
       'sticker-pack-publisher': data.authorName,
       emojis: data.categories,
@@ -143,18 +133,17 @@ export async function injectAnimatedStickerExif(
       );
     }
 
-    const vp8xData = Buffer.from(
-      webp.subarray(vp8x.dataStart, vp8x.dataEnd),
-    );
+    const vp8xData = Buffer.from(webp.subarray(vp8x.dataStart, vp8x.dataEnd));
 
     vp8xData[0] = (vp8xData[0] ?? 0) | 0b00001000;
 
     const passthroughChunks = chunks
-      .filter((chunk) => (
-        chunk.fourCC !== 'VP8X' &&
-        chunk.fourCC !== 'EXIF' &&
-        chunk.fourCC !== 'XMP '
-      ))
+      .filter(
+        (chunk) =>
+          chunk.fourCC !== 'VP8X' &&
+          chunk.fourCC !== 'EXIF' &&
+          chunk.fourCC !== 'XMP ',
+      )
       .map((chunk) => webp.subarray(chunk.start, chunk.nextOffset));
 
     const xmp = chunks.find((chunk) => chunk.fourCC === 'XMP ');

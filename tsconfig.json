@@ -13,14 +13,14 @@
     "baseUrl": "./src",
 
     "paths": {
-      "@core/*":       ["core/*"],
-      "@entities/*":  ["entities/*"],
-      "@types/*":     ["types/*"],
-      "@events/*":    ["events/*"],
-      "@auth/*":      ["auth/*"],
-      "@connection/*":["connection/*"],
+      "@core/*": ["core/*"],
+      "@entities/*": ["entities/*"],
+      "@types/*": ["types/*"],
+      "@events/*": ["events/*"],
+      "@auth/*": ["auth/*"],
+      "@connection/*": ["connection/*"],
       "@messaging/*": ["messaging/*"],
-      "@utils/*":     ["utils/*"]
+      "@utils/*": ["utils/*"]
     },
 
     "strict": true,

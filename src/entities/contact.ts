@@ -1,9 +1,6 @@
 import type { WASocket } from '@whiskeysockets/baileys';
 
-import type {
-  Jid,
-  PhoneNumber,
-} from '../types/common.js';
+import type { Jid, PhoneNumber } from '../types/common.js';
 
 export class Contact {
   constructor(
@@ -22,10 +19,7 @@ export class Contact {
 
   async avatar(): Promise<string | undefined> {
     try {
-      return await this.socket.profilePictureUrl(
-        this.jid,
-        'image',
-      );
+      return await this.socket.profilePictureUrl(this.jid, 'image');
     } catch {
       return undefined;
     }
@@ -33,28 +27,23 @@ export class Contact {
 
   async status(): Promise<string | undefined> {
     try {
-      const result = await this.socket.fetchStatus(
-        this.jid,
-      ) as any;
+      const results = await this.socket.fetchStatus(this.jid);
 
-      return result?.status;
+      const statusData = results?.[0]?.status as
+        { status?: string | null } | undefined;
+
+      return statusData?.status ?? undefined;
     } catch {
       return undefined;
     }
   }
 
   block(): Promise<void> {
-    return this.socket.updateBlockStatus(
-      this.jid,
-      'block',
-    );
+    return this.socket.updateBlockStatus(this.jid, 'block');
   }
 
   unblock(): Promise<void> {
-    return this.socket.updateBlockStatus(
-      this.jid,
-      'unblock',
-    );
+    return this.socket.updateBlockStatus(this.jid, 'unblock');
   }
 
   async exists(): Promise<boolean> {

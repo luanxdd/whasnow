@@ -1,9 +1,7 @@
 export class RateLimiter {
   private queue: Promise<unknown> = Promise.resolve();
 
-  constructor(
-    private readonly minIntervalMs = 250,
-  ) {}
+  constructor(private readonly minIntervalMs = 250) {}
 
   schedule<T>(task: () => Promise<T>): Promise<T> {
     const run = this.queue.then(async () => {

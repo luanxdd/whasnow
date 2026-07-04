@@ -1,9 +1,6 @@
 import { existsSync } from 'node:fs';
 
-import {
-  mkdir,
-  rm,
-} from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 
 import {
   useMultiFileAuthState,
@@ -19,12 +16,8 @@ export interface SessionStore {
   }>;
 }
 
-export class FileSessionStore
-  implements SessionStore
-{
-  constructor(
-    private readonly dir: string,
-  ) {}
+export class FileSessionStore implements SessionStore {
+  constructor(private readonly dir: string) {}
 
   async destroy(): Promise<void> {
     if (!existsSync(this.dir)) {
@@ -47,12 +40,7 @@ export class FileSessionStore
       });
     }
 
-    const {
-      state,
-      saveCreds,
-    } = await useMultiFileAuthState(
-      this.dir,
-    );
+    const { state, saveCreds } = await useMultiFileAuthState(this.dir);
 
     return {
       state,

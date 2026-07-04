@@ -35,9 +35,7 @@ export {
   WhaSnowError,
 } from './errors/index.js';
 
-export type {
-  ArgOptions,
-} from './core/args.js';
+export type { ArgOptions } from './core/args.js';
 
 export type {
   CommandDefinition,
@@ -58,11 +56,10 @@ export type {
   WaitForReplyOptions,
 } from './core/client.js';
 
-export type {
-  PollVoteSource,
-} from './entities/message.js';
+export type { PollVoteSource } from './entities/message.js';
 
 export type {
+  Awaitable,
   Jid,
   CallStatus,
   CreateStickerOptions,
@@ -83,13 +80,9 @@ export type {
   WaitForReplyContextOptions,
 } from './types/common.js';
 
-export type {
-  MuteOptions,
-} from './stores/mute-store.js';
+export type { MuteOptions } from './stores/mute-store.js';
 
-export type {
-  WhaSnowConfig,
-} from './types/config.js';
+export type { WhaSnowConfig } from './types/config.js';
 
 export type {
   CallPayload,

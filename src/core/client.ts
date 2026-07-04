@@ -32,56 +32,48 @@ import {
 } from '../errors/index.js';
 
 import type {
+  Awaitable,
   Jid,
   WaitForReplyContextOptions,
 } from '../types/common.js';
 
-import type {
-  WhaSnowConfig,
-  WhaSnowEventMap,
-} from '../types/index.js';
+import type { WhaSnowConfig, WhaSnowEventMap } from '../types/index.js';
 
 import { createLogger } from '../utils/logger.js';
 
-import {
-  CommandRouter,
-  type CommandRouterOptions,
-} from './command-router.js';
+import { CommandRouter, type CommandRouterOptions } from './command-router.js';
 import { Context } from './context.js';
 
-export type MessageHandler = (
-  ctx: Context,
-) => void | Promise<void>;
+export type MessageHandler = (ctx: Context) => Awaitable<unknown>;
 
 export type Middleware = (
   ctx: Context,
   next: () => Promise<void>,
-) => void | Promise<void>;
+) => Awaitable<unknown>;
 
 export type WaitForReplyOptions = WaitForReplyContextOptions<Context>;
+
+interface StatusCodeError {
+  output?: {
+    statusCode?: number;
+  };
+}
 
 export class Client {
   private socket: WASocket | null = null;
 
   private readonly config: Required<WhaSnowConfig>;
   private readonly bus: EventBus;
-  private readonly logger: ReturnType<
-    typeof createLogger
-  >;
+  private readonly logger: ReturnType<typeof createLogger>;
   private readonly session: FileSessionStore;
   private readonly connection: ConnectionManager;
-  private readonly messageStore =
-    new MessageStore();
-  private readonly pollStore =
-    new PollStore();
+  private readonly messageStore = new MessageStore();
+  private readonly pollStore = new PollStore();
   private readonly muteStore: MuteStore;
-  private readonly metadataCache =
-    new GroupMetadataCache();
+  private readonly metadataCache = new GroupMetadataCache();
   private readonly rateLimiter: RateLimiter;
-  private readonly handlers: MessageHandler[] =
-    [];
-  private readonly middlewares: Middleware[] =
-    [];
+  private readonly handlers: MessageHandler[] = [];
+  private readonly middlewares: Middleware[] = [];
 
   private statusManagerInstance: StatusManager | null = null;
 
@@ -93,42 +85,29 @@ export class Client {
       ...config,
     };
 
-    this.logger = createLogger(
-      this.config.logLevel,
-    );
+    this.logger = createLogger(this.config.logLevel);
 
     this.bus = new EventBus();
 
-    this.session = new FileSessionStore(
-      this.config.authDir,
-    );
+    this.session = new FileSessionStore(this.config.authDir);
 
-    this.muteStore = new MuteStore(
-      this.config.moderationDbPath,
-    );
+    this.muteStore = new MuteStore(this.config.moderationDbPath);
 
-    this.rateLimiter = new RateLimiter(
-      this.config.sendIntervalMs,
-    );
+    this.rateLimiter = new RateLimiter(this.config.sendIntervalMs);
 
     const policy = new ExponentialBackoff(
       this.config.maxReconnectAttempts,
       this.config.reconnectBaseDelayMs,
     );
 
-    this.connection = new ConnectionManager(
-      this.bus,
-      policy,
-      this.logger,
-      () => this.connect(),
+    this.connection = new ConnectionManager(this.bus, policy, this.logger, () =>
+      this.connect(),
     );
   }
 
   on<K extends keyof WhaSnowEventMap>(
     event: K,
-    listener: (
-      payload: WhaSnowEventMap[K],
-    ) => void,
+    listener: (payload: WhaSnowEventMap[K]) => void,
   ): this {
     this.bus.on(event, listener);
 
@@ -137,9 +116,7 @@ export class Client {
 
   off<K extends keyof WhaSnowEventMap>(
     event: K,
-    listener: (
-      payload: WhaSnowEventMap[K],
-    ) => void,
+    listener: (payload: WhaSnowEventMap[K]) => void,
   ): this {
     this.bus.off(event, listener);
 
@@ -148,9 +125,7 @@ export class Client {
 
   once<K extends keyof WhaSnowEventMap>(
     event: K,
-    listener: (
-      payload: WhaSnowEventMap[K],
-    ) => void,
+    listener: (payload: WhaSnowEventMap[K]) => void,
   ): this {
     this.bus.once(event, listener);
 
@@ -163,17 +138,13 @@ export class Client {
     return this;
   }
 
-  onMessage(
-    handler: MessageHandler,
-  ): this {
+  onMessage(handler: MessageHandler): this {
     this.handlers.push(handler);
 
     return this;
   }
 
-  offMessage(
-    handler: MessageHandler,
-  ): this {
+  offMessage(handler: MessageHandler): this {
     const index = this.handlers.indexOf(handler);
 
     if (index !== -1) {
@@ -183,9 +154,7 @@ export class Client {
     return this;
   }
 
-  commands(
-    options?: CommandRouterOptions,
-  ): CommandRouter {
+  commands(options?: CommandRouterOptions): CommandRouter {
     const router = new CommandRouter(options);
 
     this.onMessage(router.handle);
@@ -193,14 +162,8 @@ export class Client {
     return router;
   }
 
-  waitForReply(
-    options: WaitForReplyOptions = {},
-  ): Promise<Context> {
-    const {
-      timeoutMs = 60_000,
-      fromJid,
-      filter,
-    } = options;
+  waitForReply(options: WaitForReplyOptions = {}): Promise<Context> {
+    const { timeoutMs = 60_000, fromJid, filter } = options;
 
     return new Promise<Context>((resolve, reject) => {
       let settled = false;
@@ -257,9 +220,7 @@ export class Client {
     this.started = false;
   }
 
-  waitUntilReady(
-    options: { timeoutMs?: number } = {},
-  ): Promise<void> {
+  waitUntilReady(options: { timeoutMs?: number } = {}): Promise<void> {
     if (this.isConnected) {
       return Promise.resolve();
     }
@@ -283,31 +244,24 @@ export class Client {
         timer = setTimeout(() => {
           this.bus.off('ready', onReady);
 
-          reject(new ConnectionError(
-            `The connection was not ready in ${timeoutMs}ms.`,
-          ));
+          reject(
+            new ConnectionError(
+              `The connection was not ready in ${timeoutMs}ms.`,
+            ),
+          );
         }, timeoutMs);
       }
     });
   }
 
-  async requestPairingCode(
-    phone?: string,
-  ): Promise<string> {
+  async requestPairingCode(phone?: string): Promise<string> {
     if (!this.socket) {
-      throw new NotStartedError(
-        'requestPairingCode()',
-      );
+      throw new NotStartedError('requestPairingCode()');
     }
 
-    const number = (
-      phone ?? this.config.phoneNumber
-    ).replace(/\D/g, '');
+    const number = (phone ?? this.config.phoneNumber).replace(/\D/g, '');
 
-    const code =
-      await this.socket.requestPairingCode(
-        number,
-      );
+    const code = await this.socket.requestPairingCode(number);
 
     this.bus.emit('pairing.code', {
       code,
@@ -321,24 +275,16 @@ export class Client {
     this.assertStarted();
 
     if (!this.statusManagerInstance) {
-      this.statusManagerInstance = new StatusManager(
-        this.socket!,
-      );
+      this.statusManagerInstance = new StatusManager(this.socket!);
     }
 
     return this.statusManagerInstance;
   }
 
-  async rejectCall(
-    callId: string,
-    callerJid: Jid,
-  ): Promise<void> {
+  async rejectCall(callId: string, callerJid: Jid): Promise<void> {
     this.assertStarted();
 
-    await this.socket!.rejectCall(
-      callId,
-      callerJid,
-    );
+    await this.socket!.rejectCall(callId, callerJid);
   }
 
   chat(jid: Jid): Chat {
@@ -356,12 +302,7 @@ export class Client {
   group(jid: Jid): Group {
     this.assertStarted();
 
-    return new Group(
-      this.socket!,
-      jid,
-      this.muteStore,
-      this.metadataCache,
-    );
+    return new Group(this.socket!, jid, this.muteStore, this.metadataCache);
   }
 
   contact(jid: Jid): Contact {
@@ -373,30 +314,17 @@ export class Client {
   async groups(): Promise<Group[]> {
     this.assertStarted();
 
-    const result =
-      await this.socket!.groupFetchAllParticipating();
+    const result = await this.socket!.groupFetchAllParticipating();
 
     return Object.keys(result).map(
-      (id) => new Group(
-        this.socket!,
-        id,
-        this.muteStore,
-        this.metadataCache,
-      ),
+      (id) => new Group(this.socket!, id, this.muteStore, this.metadataCache),
     );
   }
 
-  async createGroup(
-    name: string,
-    participants: Jid[],
-  ): Promise<Group> {
+  async createGroup(name: string, participants: Jid[]): Promise<Group> {
     this.assertStarted();
 
-    const result =
-      await this.socket!.groupCreate(
-        name,
-        participants,
-      );
+    const result = await this.socket!.groupCreate(name, participants);
 
     return new Group(
       this.socket!,
@@ -406,33 +334,18 @@ export class Client {
     );
   }
 
-  async joinGroup(
-    inviteCodeOrLink: string,
-  ): Promise<Group> {
+  async joinGroup(inviteCodeOrLink: string): Promise<Group> {
     this.assertStarted();
 
-    const code =
-      inviteCodeOrLink.split('/').pop() ??
-      inviteCodeOrLink;
+    const code = inviteCodeOrLink.split('/').pop() ?? inviteCodeOrLink;
 
-    const result =
-      await this.socket!.groupAcceptInvite(
-        code,
-      );
+    const result = await this.socket!.groupAcceptInvite(code);
 
-    return new Group(
-      this.socket!,
-      result!,
-      this.muteStore,
-      this.metadataCache,
-    );
+    return new Group(this.socket!, result!, this.muteStore, this.metadataCache);
   }
 
   get isConnected(): boolean {
-    return (
-      (this.socket?.ws as any)?.readyState ===
-      1
-    );
+    return this.socket?.ws.isOpen ?? false;
   }
 
   get userJid(): Jid | undefined {
@@ -440,8 +353,7 @@ export class Client {
   }
 
   private async connect(): Promise<void> {
-    const { state, persist } =
-      await this.session.load();
+    const { state, persist } = await this.session.load();
 
     this.socket = await createSocket(
       this.config,
@@ -454,10 +366,7 @@ export class Client {
 
     const socket = this.socket;
 
-    socket.ev.on(
-      'creds.update',
-      persist,
-    );
+    socket.ev.on('creds.update', persist);
 
     this.connection.attach(socket);
 
@@ -470,196 +379,135 @@ export class Client {
 
     let pairingCodePrinted = false;
 
-    let pairingReconnectTimer:
-      | ReturnType<typeof setTimeout>
-      | null = null;
+    let pairingReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const schedulePairingReconnect =
-      (): void => {
-        if (pairingReconnectTimer) {
-          return;
-        }
+    const schedulePairingReconnect = (): void => {
+      if (pairingReconnectTimer) {
+        return;
+      }
 
-        pairingReconnectTimer = setTimeout(
-          () => {
-            pairingReconnectTimer = null;
-            void this.connect();
-          },
-          45_000,
-        );
-      };
+      pairingReconnectTimer = setTimeout(() => {
+        pairingReconnectTimer = null;
+        void this.connect();
+      }, 45_000);
+    };
 
-    const tryRequestPairingCode =
-      async (): Promise<void> => {
-        if (
-          state.creds.registered ||
-          pairingCodePrinted
-        ) {
-          return;
-        }
+    const tryRequestPairingCode = async (): Promise<void> => {
+      if (state.creds.registered || pairingCodePrinted) {
+        return;
+      }
 
-        pairingCodePrinted = true;
+      pairingCodePrinted = true;
 
-        try {
-          await this.requestPairingCode();
-        } catch (err: any) {
-          pairingCodePrinted = false;
+      try {
+        await this.requestPairingCode();
+      } catch (err: unknown) {
+        pairingCodePrinted = false;
 
-          const statusCode =
-            err?.output?.statusCode;
+        const statusCode = (err as StatusCodeError | undefined)?.output
+          ?.statusCode;
 
-          if (statusCode === 428) {
-            this.logger.warn(
-              'The connection was not ready for pairing. Trying again in 45s...',
-            );
-
-            schedulePairingReconnect();
-
-            return;
-          }
-
-          this.logger.error(
-            { err },
-            'Failed to request pairing code',
+        if (statusCode === 428) {
+          this.logger.warn(
+            'The connection was not ready for pairing. Trying again in 45s...',
           );
+
+          schedulePairingReconnect();
+
+          return;
+        }
+
+        this.logger.error({ err }, 'Failed to request pairing code');
+
+        this.bus.emit(
+          'error',
+          new PairingCodeError(
+            err instanceof Error ? err.message : String(err),
+            statusCode,
+            { cause: err },
+          ),
+        );
+      }
+    };
+
+    socket.ev.on('connection.update', async ({ connection, qr }) => {
+      if (qr && !state.creds.registered && !pairingCodePrinted) {
+        await tryRequestPairingCode();
+      }
+
+      if (connection === 'open') {
+        pairingCodePrinted = false;
+
+        if (pairingReconnectTimer) {
+          clearTimeout(pairingReconnectTimer);
+
+          pairingReconnectTimer = null;
+        }
+      }
+    });
+
+    socket.ev.on('messages.upsert', ({ messages }) => {
+      for (const raw of messages) {
+        if (raw.key.remoteJid && raw.key.id && raw.message) {
+          this.messageStore.set(raw.key.remoteJid, raw.key.id, raw.message);
+        }
+
+        if (
+          raw.message?.pollCreationMessage ||
+          raw.message?.pollCreationMessageV2 ||
+          raw.message?.pollCreationMessageV3
+        ) {
+          this.pollStore.registerCreation(raw);
+        }
+
+        if (raw.key.fromMe) {
+          continue;
+        }
+
+        const isGroup = raw.key.remoteJid?.endsWith('@g.us') ?? false;
+
+        const senderJid = raw.key.participant ?? raw.key.remoteJid;
+
+        if (
+          isGroup &&
+          raw.key.remoteJid &&
+          senderJid &&
+          raw.message &&
+          this.muteStore.isMuted(raw.key.remoteJid, senderJid)
+        ) {
+          socket
+            .sendMessage(raw.key.remoteJid, {
+              delete: raw.key,
+            })
+            .catch((err) => {
+              this.logger.error({ err }, 'Failed to delete muted user message');
+            });
+
+          continue;
+        }
+
+        const ctx = new Context(socket, raw, {
+          muteStore: this.muteStore,
+          metadataCache: this.metadataCache,
+          rateLimiter: this.rateLimiter,
+          pollStore: this.pollStore,
+          stickerDefaults: this.config.stickerDefaults,
+          waitForReplyFn: (options) => this.waitForReply(options),
+        });
+
+        this.runMiddlewares(ctx).catch((err) => {
+          this.logger.error({ err }, 'Middleware error');
 
           this.bus.emit(
             'error',
-            new PairingCodeError(
-              err instanceof Error
-                ? err.message
-                : String(err),
-              statusCode,
-              { cause: err },
-            ),
+            err instanceof Error ? err : new Error(String(err)),
           );
-        }
-      };
-
-    socket.ev.on(
-      'connection.update',
-      async ({
-        connection,
-        qr,
-      }) => {
-        if (
-          qr &&
-          !state.creds.registered &&
-          !pairingCodePrinted
-        ) {
-          await tryRequestPairingCode();
-        }
-
-        if (connection === 'open') {
-          pairingCodePrinted = false;
-
-          if (pairingReconnectTimer) {
-            clearTimeout(
-              pairingReconnectTimer,
-            );
-
-            pairingReconnectTimer = null;
-          }
-        }
-      },
-    );
-
-    socket.ev.on(
-      'messages.upsert',
-      ({ messages }) => {
-        for (const raw of messages) {
-          if (
-            raw.key.remoteJid &&
-            raw.key.id &&
-            raw.message
-          ) {
-            this.messageStore.set(
-              raw.key.remoteJid,
-              raw.key.id,
-              raw.message,
-            );
-          }
-
-          if (
-            raw.message?.pollCreationMessage ||
-            raw.message?.pollCreationMessageV2 ||
-            raw.message?.pollCreationMessageV3
-          ) {
-            this.pollStore.registerCreation(raw);
-          }
-
-          if (raw.key.fromMe) {
-            continue;
-          }
-
-          const isGroup =
-            raw.key.remoteJid?.endsWith(
-              '@g.us',
-            ) ?? false;
-
-          const senderJid =
-            raw.key.participant ??
-            raw.key.remoteJid;
-
-          if (
-            isGroup &&
-            raw.key.remoteJid &&
-            senderJid &&
-            raw.message &&
-            this.muteStore.isMuted(
-              raw.key.remoteJid,
-              senderJid,
-            )
-          ) {
-            socket
-              .sendMessage(raw.key.remoteJid, {
-                delete: raw.key,
-              })
-              .catch((err) => {
-                this.logger.error(
-                  { err },
-                  'Failed to delete muted user message',
-                );
-              });
-
-            continue;
-          }
-
-          const ctx = new Context(
-            socket,
-            raw,
-            {
-              muteStore: this.muteStore,
-              metadataCache: this.metadataCache,
-              rateLimiter: this.rateLimiter,
-              pollStore: this.pollStore,
-              stickerDefaults: this.config.stickerDefaults,
-              waitForReplyFn: (options) =>
-                this.waitForReply(options),
-            },
-          );
-
-          this.runMiddlewares(ctx).catch((err) => {
-            this.logger.error(
-              { err },
-              'Middleware error',
-            );
-
-            this.bus.emit(
-              'error',
-              err instanceof Error
-                ? err
-                : new Error(String(err)),
-            );
-          });
-        }
-      },
-    );
+        });
+      }
+    });
   }
 
-  private async runMiddlewares(
-    ctx: Context,
-  ): Promise<void> {
+  private async runMiddlewares(ctx: Context): Promise<void> {
     let index = -1;
 
     const dispatch = async (i: number): Promise<void> => {
@@ -673,19 +521,12 @@ export class Client {
 
       if (!middleware) {
         for (const handler of this.handlers) {
-          Promise.resolve(
-            handler(ctx),
-          ).catch((err) => {
-            this.logger.error(
-              { err },
-              'Handler error',
-            );
+          Promise.resolve(handler(ctx)).catch((err) => {
+            this.logger.error({ err }, 'Handler error');
 
             this.bus.emit(
               'error',
-              err instanceof Error
-                ? err
-                : new Error(String(err)),
+              err instanceof Error ? err : new Error(String(err)),
             );
           });
         }

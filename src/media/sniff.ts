@@ -16,7 +16,6 @@ export interface SniffResult {
 const WEBP_ANIMATION_FLAG = 0x02;
 
 function isAnimatedWebp(buffer: Buffer): boolean {
-
   if (buffer.length < 21) {
     return false;
   }
@@ -78,17 +77,11 @@ export function sniffMedia(buffer: Buffer): SniffResult {
     };
   }
 
-  if (
-    buffer.length >= 12 &&
-    buffer.toString('ascii', 4, 8) === 'ftyp'
-  ) {
+  if (buffer.length >= 12 && buffer.toString('ascii', 4, 8) === 'ftyp') {
     const brand = buffer.toString('ascii', 8, 12);
 
     return {
-      mimeType:
-        brand.startsWith('qt')
-          ? 'video/quicktime'
-          : 'video/mp4',
+      mimeType: brand.startsWith('qt') ? 'video/quicktime' : 'video/mp4',
       isAnimated: true,
     };
   }

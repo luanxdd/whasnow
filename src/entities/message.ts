@@ -23,7 +23,6 @@ import type {
   StickerDefaults,
 } from '../types/common.js';
 
-
 export interface PollVoteSource {
   getCreationMessage(pollMessageId: string): WAMessage | undefined;
 }
@@ -128,8 +127,7 @@ export class Message {
           fromMe: false,
         },
         message: quotedMessage,
-        messageTimestamp:
-          this.raw.messageTimestamp,
+        messageTimestamp: this.raw.messageTimestamp,
       } as WAMessage,
       this.rateLimiter,
       undefined,
@@ -167,9 +165,7 @@ export class Message {
   }
 
   get isEphemeral(): boolean {
-    return Boolean(
-      this.activeContextInfo?.expiration,
-    );
+    return Boolean(this.activeContextInfo?.expiration);
   }
 
   get isPoll(): boolean {
@@ -184,18 +180,11 @@ export class Message {
     const ts = this.raw.messageTimestamp;
 
     return new Date(
-      (
-        typeof ts === 'number'
-          ? ts
-          : Number(ts?.low ?? 0)
-      ) * 1000,
+      (typeof ts === 'number' ? ts : Number(ts?.low ?? 0)) * 1000,
     );
   }
 
-  reply(
-    text: string,
-    options?: SendTextOptions,
-  ): Promise<Message> {
+  reply(text: string, options?: SendTextOptions): Promise<Message> {
     return this.sender.text(text, options);
   }
 
@@ -220,11 +209,7 @@ export class Message {
     asVoiceNote = false,
     options?: MediaSendOptions,
   ): Promise<void> {
-    return this.sender.audio(
-      source,
-      asVoiceNote,
-      options,
-    );
+    return this.sender.audio(source, asVoiceNote, options);
   }
 
   replyWithDocument(
@@ -232,11 +217,7 @@ export class Message {
     fileName?: string,
     caption?: string,
   ): Promise<void> {
-    return this.sender.document(
-      source,
-      fileName,
-      caption,
-    );
+    return this.sender.document(source, fileName, caption);
   }
 
   replyWithSticker(
@@ -247,15 +228,12 @@ export class Message {
   }
 
   async react(emoji: string): Promise<void> {
-    await this.socket.sendMessage(
-      this.chatId,
-      {
-        react: {
-          text: emoji,
-          key: this.raw.key,
-        },
+    await this.socket.sendMessage(this.chatId, {
+      react: {
+        text: emoji,
+        key: this.raw.key,
       },
-    );
+    });
   }
 
   votes(): PollVote[] {
@@ -264,8 +242,7 @@ export class Message {
     }
 
     const trackedMessage =
-      this.pollStore?.getCreationMessage(this.id) ??
-      this.raw;
+      this.pollStore?.getCreationMessage(this.id) ?? this.raw;
 
     const aggregated = getAggregateVotesInPollMessage({
       message: trackedMessage.message,
@@ -281,23 +258,15 @@ export class Message {
   }
 
   async edit(newText: string): Promise<void> {
-    await this.socket.sendMessage(
-      this.chatId,
-      {
-        text: newText,
-        edit: this.raw.key,
-      },
-    );
+    await this.socket.sendMessage(this.chatId, {
+      text: newText,
+      edit: this.raw.key,
+    });
   }
 
-  async delete(
-    forEveryone = true,
-  ): Promise<void> {
+  async delete(forEveryone = true): Promise<void> {
     if (forEveryone) {
-      await this.socket.sendMessage(
-        this.chatId,
-        { delete: this.raw.key },
-      );
+      await this.socket.sendMessage(this.chatId, { delete: this.raw.key });
 
       return;
     }
@@ -315,33 +284,22 @@ export class Message {
   }
 
   async forward(to: Jid): Promise<void> {
-    await this.socket.sendMessage(
-      to,
-      { forward: this.raw },
-    );
+    await this.socket.sendMessage(to, { forward: this.raw });
   }
 
-  async pin(
-    duration: 86_400 | 604_800 | 2_592_000 = 86_400,
-  ): Promise<void> {
-    await this.socket.sendMessage(
-      this.chatId,
-      {
-        pin: this.raw.key,
-        type: proto.PinInChat.Type.PIN_FOR_ALL,
-        time: duration,
-      },
-    );
+  async pin(duration: 86_400 | 604_800 | 2_592_000 = 86_400): Promise<void> {
+    await this.socket.sendMessage(this.chatId, {
+      pin: this.raw.key,
+      type: proto.PinInChat.Type.PIN_FOR_ALL,
+      time: duration,
+    });
   }
 
   async unpin(): Promise<void> {
-    await this.socket.sendMessage(
-      this.chatId,
-      {
-        pin: this.raw.key,
-        type: proto.PinInChat.Type.UNPIN_FOR_ALL,
-      },
-    );
+    await this.socket.sendMessage(this.chatId, {
+      pin: this.raw.key,
+      type: proto.PinInChat.Type.UNPIN_FOR_ALL,
+    });
   }
 
   async downloadMedia(): Promise<Buffer> {
@@ -352,15 +310,11 @@ export class Message {
         {},
         {
           logger: this.socket.logger,
-          reuploadRequest:
-            this.socket.updateMediaMessage,
+          reuploadRequest: this.socket.updateMediaMessage,
         },
       )) as Buffer;
     } catch (err) {
-      throw new MediaDownloadError(
-        undefined,
-        { cause: err },
-      );
+      throw new MediaDownloadError(undefined, { cause: err });
     }
   }
 }

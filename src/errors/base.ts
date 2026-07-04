@@ -7,26 +7,15 @@ export abstract class WhaSnowError extends Error {
       cause?: unknown;
     },
   ) {
-    super(
-      message,
-      options,
-    );
+    super(message, options);
 
-    this.name =
-      this.constructor.name;
+    this.name = this.constructor.name;
 
-    const errorCtor =
-      Error as unknown as {
-        captureStackTrace?: (
-          target: object,
-          ctor: unknown,
-        ) => void;
-      };
+    const errorCtor = Error as unknown as {
+      captureStackTrace?: (target: object, ctor: unknown) => void;
+    };
 
-    errorCtor.captureStackTrace?.(
-      this,
-      this.constructor,
-    );
+    errorCtor.captureStackTrace?.(this, this.constructor);
   }
 
   toJSON(): {
@@ -35,12 +24,9 @@ export abstract class WhaSnowError extends Error {
     message: string;
   } {
     return {
-      name:
-        this.name,
-      code:
-        this.code,
-      message:
-        this.message,
+      name: this.name,
+      code: this.code,
+      message: this.message,
     };
   }
 }

@@ -43,9 +43,7 @@ export class MessageSender {
     asVoiceNote = false,
     options?: MediaSendOptions,
   ): Promise<void> {
-    const audio = await resolveMedia(
-      source,
-    );
+    const audio = await resolveMedia(source);
 
     await this.dispatch({
       audio,
@@ -60,26 +58,16 @@ export class MessageSender {
     fileName?: string,
     caption?: string,
   ): Promise<void> {
-    const path =
-      typeof source === 'string'
-        ? source
-        : '';
+    const path = typeof source === 'string' ? source : '';
 
-    const document =
-      await resolveMedia(source);
+    const document = await resolveMedia(source);
 
     await this.dispatch({
       document,
 
-      fileName:
-        fileName ??
-        (path
-          ? fileNameFromPath(path)
-          : 'file'),
+      fileName: fileName ?? (path ? fileNameFromPath(path) : 'file'),
 
-      mimetype: path
-        ? mimeTypeFromPath(path)
-        : 'application/octet-stream',
+      mimetype: path ? mimeTypeFromPath(path) : 'application/octet-stream',
 
       caption,
     });
@@ -90,9 +78,7 @@ export class MessageSender {
     caption?: string,
     options?: MediaSendOptions,
   ): Promise<void> {
-    const image = await resolveMedia(
-      source,
-    );
+    const image = await resolveMedia(source);
 
     await this.dispatch({
       image,
@@ -115,10 +101,7 @@ export class MessageSender {
     });
   }
 
-  async text(
-    body: string,
-    options?: SendTextOptions,
-  ): Promise<Message> {
+  async text(body: string, options?: SendTextOptions): Promise<Message> {
     const raw = await this.dispatch({
       text: body,
       mentions: options?.mentions,
@@ -138,9 +121,7 @@ export class MessageSender {
     caption?: string,
     options?: MediaSendOptions,
   ): Promise<void> {
-    const video = await resolveMedia(
-      source,
-    );
+    const video = await resolveMedia(source);
 
     await this.dispatch({
       video,
@@ -158,10 +139,8 @@ export class MessageSender {
       poll: {
         name,
         values,
-        selectableCount:
-          options?.selectableCount ?? 1,
-        toAnnouncementGroup:
-          options?.toAnnouncementGroup ?? false,
+        selectableCount: options?.selectableCount ?? 1,
+        toAnnouncementGroup: options?.toAnnouncementGroup ?? false,
       },
     });
 
@@ -174,21 +153,17 @@ export class MessageSender {
     );
   }
 
-  private async dispatch(
-    content: AnyMessageContent,
-  ): Promise<WAMessage> {
+  private async dispatch(content: AnyMessageContent): Promise<WAMessage> {
     const send = async (): Promise<WAMessage> => {
-      const raw =
-        await this.socket.sendMessage(
-          this.chatId,
-          content,
-          this.quotedMessage
-            ? {
-                quoted:
-                  this.quotedMessage,
-              }
-            : undefined,
-        );
+      const raw = await this.socket.sendMessage(
+        this.chatId,
+        content,
+        this.quotedMessage
+          ? {
+              quoted: this.quotedMessage,
+            }
+          : undefined,
+      );
 
       if (!raw) {
         throw new MessageSendError();
@@ -197,8 +172,6 @@ export class MessageSender {
       return raw;
     };
 
-    return this.rateLimiter
-      ? this.rateLimiter.schedule(send)
-      : send();
+    return this.rateLimiter ? this.rateLimiter.schedule(send) : send();
   }
 }

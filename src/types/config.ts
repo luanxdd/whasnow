@@ -48,5 +48,5 @@ export const defaultConfig: Required<WhaSnowConfig> = {
 
   moderationDbPath: './whasnow-moderation.db',
 
-  stickerDefaults: {},
+  stickerDefaults: {}
 };

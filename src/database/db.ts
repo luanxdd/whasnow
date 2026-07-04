@@ -1,36 +1,26 @@
 import Database from 'better-sqlite3';
 
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import {
-  integer,
-  sqliteTable,
-  text,
-} from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const mutedUsers = sqliteTable('muted_users', {
-  id: integer('id')
-    .primaryKey({ autoIncrement: true }),
+  id: integer('id').primaryKey({ autoIncrement: true }),
 
-  groupId: text('group_id')
-    .notNull(),
+  groupId: text('group_id').notNull(),
 
-  userJid: text('user_jid')
-    .notNull(),
+  userJid: text('user_jid').notNull(),
 
   expiresAt: integer('expires_at'),
 
-  mutedAt: integer('muted_at')
-    .notNull(),
+  mutedAt: integer('muted_at').notNull(),
 });
 
-export type MutedUser    = typeof mutedUsers.$inferSelect;
+export type MutedUser = typeof mutedUsers.$inferSelect;
 export type NewMutedUser = typeof mutedUsers.$inferInsert;
 
 let instance: ReturnType<typeof drizzle> | null = null;
 
-export function getDb(
-  dbPath: string,
-): ReturnType<typeof drizzle> {
+export function getDb(dbPath: string): ReturnType<typeof drizzle> {
   if (instance) {
     return instance;
   }

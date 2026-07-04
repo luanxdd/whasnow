@@ -1,7 +1,4 @@
-import type {
-  WAMessage,
-  WASocket,
-} from '@whiskeysockets/baileys';
+import type { WAMessage, WASocket } from '@whiskeysockets/baileys';
 
 import { Chat } from '../entities/chat.js';
 import { Contact } from '../entities/contact.js';
@@ -99,51 +96,28 @@ export class Context {
   async senderIsAdmin(): Promise<boolean> {
     const group = this.group();
 
-    return group
-      ? group.isAdmin(this.from.jid)
-      : false;
+    return group ? group.isAdmin(this.from.jid) : false;
   }
 
   targets(): Jid[] {
-    const mentioned =
-      this.message.mentions;
+    const mentioned = this.message.mentions;
 
-    const quotedSender =
-      this.message.quoted?.senderId;
+    const quotedSender = this.message.quoted?.senderId;
 
     return [
-      ...new Set([
-        ...mentioned,
-        ...(quotedSender
-          ? [quotedSender]
-          : []),
-      ]),
+      ...new Set([...mentioned, ...(quotedSender ? [quotedSender] : [])]),
     ];
   }
 
-  reply(
-    text: string,
-    options?: SendTextOptions,
-  ): Promise<Message> {
-    return this.message.reply(
-      text,
-      options,
-    );
+  reply(text: string, options?: SendTextOptions): Promise<Message> {
+    return this.message.reply(text, options);
   }
 
-  send(
-    text: string,
-    options?: SendTextOptions,
-  ): Promise<Message> {
-    return this.chat.send.text(
-      text,
-      options,
-    );
+  send(text: string, options?: SendTextOptions): Promise<Message> {
+    return this.chat.send.text(text, options);
   }
 
-  react(
-    emoji: string,
-  ): Promise<void> {
+  react(emoji: string): Promise<void> {
     return this.message.react(emoji);
   }
 

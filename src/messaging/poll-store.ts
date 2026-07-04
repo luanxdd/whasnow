@@ -1,7 +1,4 @@
-import type {
-  proto,
-  WAMessage,
-} from '@whiskeysockets/baileys';
+import type { proto, WAMessage } from '@whiskeysockets/baileys';
 
 interface TrackedPoll {
   creationMessage: WAMessage;
@@ -37,9 +34,7 @@ export class PollStore {
     this.evictIfNeeded();
   }
 
-  getCreationMessage(
-    pollMessageId: string,
-  ): WAMessage | undefined {
+  getCreationMessage(pollMessageId: string): WAMessage | undefined {
     return this.polls.get(pollMessageId)?.creationMessage;
   }
 
@@ -54,8 +49,7 @@ export class PollStore {
     }
 
     tracked.pollUpdates.push(update);
-    tracked.creationMessage.pollUpdates =
-      tracked.pollUpdates;
+    tracked.creationMessage.pollUpdates = tracked.pollUpdates;
 
     return tracked.creationMessage;
   }

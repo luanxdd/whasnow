@@ -14,10 +14,7 @@ export {
   MissingArgumentError,
 } from './commands.js';
 
-export {
-  GroupContextError,
-  ModerationStoreUnavailableError,
-} from './group.js';
+export { GroupContextError, ModerationStoreUnavailableError } from './group.js';
 
 export {
   InvalidMediaSourceError,

@@ -25,28 +25,25 @@ export class Chat {
     pollStore?: PollVoteSource,
     stickerDefaults?: StickerDefaults,
   ) {
-    this.send = new ChatSend(socket, id, rateLimiter, pollStore, stickerDefaults);
+    this.send = new ChatSend(
+      socket,
+      id,
+      rateLimiter,
+      pollStore,
+      stickerDefaults,
+    );
   }
 
   typing(): Promise<void> {
-    return this.socket.sendPresenceUpdate(
-      'composing',
-      this.id,
-    );
+    return this.socket.sendPresenceUpdate('composing', this.id);
   }
 
   recording(): Promise<void> {
-    return this.socket.sendPresenceUpdate(
-      'recording',
-      this.id,
-    );
+    return this.socket.sendPresenceUpdate('recording', this.id);
   }
 
   stopTyping(): Promise<void> {
-    return this.socket.sendPresenceUpdate(
-      'paused',
-      this.id,
-    );
+    return this.socket.sendPresenceUpdate('paused', this.id);
   }
 
   markRead(): Promise<void> {
@@ -59,10 +56,7 @@ export class Chat {
   }
 
   archive(): Promise<void> {
-    return this.socket.chatModify(
-      { archive: true, lastMessages: [] },
-      this.id,
-    );
+    return this.socket.chatModify({ archive: true, lastMessages: [] }, this.id);
   }
 
   unarchive(): Promise<void> {
@@ -73,10 +67,7 @@ export class Chat {
   }
 
   clear(): Promise<void> {
-    return this.socket.chatModify(
-      { clear: true, lastMessages: [] },
-      this.id,
-    );
+    return this.socket.chatModify({ clear: true, lastMessages: [] }, this.id);
   }
 }
 
@@ -100,10 +91,7 @@ export class ChatSend {
     );
   }
 
-  text(
-    body: string,
-    options?: SendTextOptions,
-  ): Promise<Message> {
+  text(body: string, options?: SendTextOptions): Promise<Message> {
     return this.sender.text(body, options);
   }
 
@@ -136,17 +124,10 @@ export class ChatSend {
     fileName?: string,
     caption?: string,
   ): Promise<void> {
-    return this.sender.document(
-      source,
-      fileName,
-      caption,
-    );
+    return this.sender.document(source, fileName, caption);
   }
 
-  sticker(
-    source: MediaSource,
-    options?: CreateStickerOptions,
-  ): Promise<void> {
+  sticker(source: MediaSource, options?: CreateStickerOptions): Promise<void> {
     return this.sender.sticker(source, options);
   }
 

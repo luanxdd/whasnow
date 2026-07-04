@@ -2,10 +2,7 @@ import type { WASocket } from '@whiskeysockets/baileys';
 
 import { ModerationStoreUnavailableError } from '../errors/index.js';
 
-import type {
-  MuteOptions,
-  MuteStore,
-} from '../stores/mute-store.js';
+import type { MuteOptions, MuteStore } from '../stores/mute-store.js';
 
 import type { Jid } from '../types/common.js';
 
@@ -48,25 +45,15 @@ export class Member {
   }
 
   async mute(options: MuteOptions = {}): Promise<void> {
-    this.requireMuteStore().mute(
-      this.groupId,
-      this.jid,
-      options,
-    );
+    this.requireMuteStore().mute(this.groupId, this.jid, options);
   }
 
   async unmute(): Promise<void> {
-    this.requireMuteStore().unmute(
-      this.groupId,
-      this.jid,
-    );
+    this.requireMuteStore().unmute(this.groupId, this.jid);
   }
 
   isMuted(): boolean {
-    return this.muteStore?.isMuted(
-      this.groupId,
-      this.jid,
-    ) ?? false;
+    return this.muteStore?.isMuted(this.groupId, this.jid) ?? false;
   }
 
   private requireMuteStore(): MuteStore {

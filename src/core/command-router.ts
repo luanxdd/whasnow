@@ -4,16 +4,15 @@ import { ArgsParser } from './args.js';
 
 import type { Context } from './context.js';
 
+import type { Awaitable } from '../types/common.js';
+
 import {
   loadCommandsFromDirectory,
   type LoadCommandsOptions,
   type LoadCommandsResult,
 } from './command-loader.js';
 
-export type UnauthorizedReason =
-  | 'group'
-  | 'admin'
-  | 'cooldown';
+export type UnauthorizedReason = 'group' | 'admin' | 'cooldown';
 
 export interface CommandDefinition {
   aliases?: string[];
@@ -25,20 +24,13 @@ export interface CommandDefinition {
   onlyAdmin?: boolean;
   onlyGroup?: boolean;
 
-  execute: (
-    ctx: Context,
-    args: ArgsParser,
-  ) => void | Promise<void>;
+  execute: (ctx: Context, args: ArgsParser) => Awaitable<unknown>;
 }
 
 export type CommandMapEntry =
-  | CommandDefinition['execute']
-  | Omit<CommandDefinition, 'name'>;
+  CommandDefinition['execute'] | Omit<CommandDefinition, 'name'>;
 
-export type CommandMap = Record<
-  string,
-  CommandMapEntry
->;
+export type CommandMap = Record<string, CommandMapEntry>;
 
 export interface CommandRouterOptions {
   caseSensitive?: boolean;
@@ -49,27 +41,21 @@ export interface CommandRouterOptions {
     ctx: Context,
     reason: UnauthorizedReason,
     command: CommandDefinition,
-  ) => void | Promise<void>;
+  ) => Awaitable<unknown>;
 
   onError?: (
     err: unknown,
     ctx: Context,
     command: CommandDefinition,
-  ) => void | Promise<void>;
+  ) => Awaitable<unknown>;
 
   prefix?: string;
 }
 
 export class CommandRouter {
-  private readonly byName = new Map<
-    string,
-    CommandDefinition
-  >();
+  private readonly byName = new Map<string, CommandDefinition>();
 
-  private readonly lastRunAt = new Map<
-    string,
-    number
-  >();
+  private readonly lastRunAt = new Map<string, number>();
 
   private readonly caseSensitive: boolean;
   private readonly notifyBlocked: boolean;
@@ -77,39 +63,25 @@ export class CommandRouter {
   private readonly onError?: CommandRouterOptions['onError'];
   private readonly prefix: string;
 
-  constructor(
-    options: CommandRouterOptions = {},
-  ) {
+  constructor(options: CommandRouterOptions = {}) {
     this.prefix = options.prefix ?? '!';
-    this.caseSensitive =
-      options.caseSensitive ?? false;
-    this.notifyBlocked =
-      options.notifyBlocked ?? true;
+    this.caseSensitive = options.caseSensitive ?? false;
+    this.notifyBlocked = options.notifyBlocked ?? true;
     this.onBlocked = options.onBlocked;
     this.onError = options.onError;
   }
 
-  register(
-    command: CommandDefinition,
-  ): this {
-    this.byName.set(
-      this.normalize(command.name),
-      command,
-    );
+  register(command: CommandDefinition): this {
+    this.byName.set(this.normalize(command.name), command);
 
     for (const alias of command.aliases ?? []) {
-      this.byName.set(
-        this.normalize(alias),
-        command,
-      );
+      this.byName.set(this.normalize(alias), command);
     }
 
     return this;
   }
 
-  registerMany(
-    commands: CommandDefinition[],
-  ): this {
+  registerMany(commands: CommandDefinition[]): this {
     for (const command of commands) {
       this.register(command);
     }
@@ -117,12 +89,8 @@ export class CommandRouter {
     return this;
   }
 
-  registerMap(
-    commands: CommandMap,
-  ): this {
-    for (const [name, value] of Object.entries(
-      commands,
-    )) {
+  registerMap(commands: CommandMap): this {
+    for (const [name, value] of Object.entries(commands)) {
       if (typeof value === 'function') {
         this.register({
           name,
@@ -145,36 +113,24 @@ export class CommandRouter {
     dir: string | URL,
     options?: LoadCommandsOptions,
   ): Promise<LoadCommandsResult> {
-    const path =
-      dir instanceof URL ? fileURLToPath(dir) : dir;
+    const path = dir instanceof URL ? fileURLToPath(dir) : dir;
 
-    const result = await loadCommandsFromDirectory(
-      path,
-      options,
-    );
+    const result = await loadCommandsFromDirectory(path, options);
 
     this.registerMany(result.commands);
 
     return result;
   }
 
-  find(
-    name: string,
-  ): CommandDefinition | undefined {
-    return this.byName.get(
-      this.normalize(name),
-    );
+  find(name: string): CommandDefinition | undefined {
+    return this.byName.get(this.normalize(name));
   }
 
   list(): CommandDefinition[] {
-    return [
-      ...new Set(this.byName.values()),
-    ];
+    return [...new Set(this.byName.values())];
   }
 
-  handle = async (
-    ctx: Context,
-  ): Promise<void> => {
+  handle = async (ctx: Context): Promise<void> => {
     const text = ctx.message.text.trim();
 
     if (!text.startsWith(this.prefix)) {
@@ -196,28 +152,14 @@ export class CommandRouter {
       return;
     }
 
-    if (
-      command.onlyGroup &&
-      !ctx.isGroup
-    ) {
-      await this.notifyBlockedReason(
-        ctx,
-        'group',
-        command,
-      );
+    if (command.onlyGroup && !ctx.isGroup) {
+      await this.notifyBlockedReason(ctx, 'group', command);
 
       return;
     }
 
-    if (
-      command.onlyAdmin &&
-      !(await ctx.senderIsAdmin())
-    ) {
-      await this.notifyBlockedReason(
-        ctx,
-        'admin',
-        command,
-      );
+    if (command.onlyAdmin && !(await ctx.senderIsAdmin())) {
+      await this.notifyBlockedReason(ctx, 'admin', command);
 
       return;
     }
@@ -225,20 +167,12 @@ export class CommandRouter {
     if (command.cooldownMs) {
       const key = `${this.normalize(command.name)}:${ctx.from.jid}`;
 
-      const last =
-        this.lastRunAt.get(key) ?? 0;
+      const last = this.lastRunAt.get(key) ?? 0;
 
       const now = Date.now();
 
-      if (
-        now - last <
-        command.cooldownMs
-      ) {
-        await this.notifyBlockedReason(
-          ctx,
-          'cooldown',
-          command,
-        );
+      if (now - last < command.cooldownMs) {
+        await this.notifyBlockedReason(ctx, 'cooldown', command);
 
         return;
       }
@@ -247,20 +181,13 @@ export class CommandRouter {
     }
 
     try {
-      await command.execute(
-        ctx,
-        new ArgsParser(args),
-      );
+      await command.execute(ctx, new ArgsParser(args));
     } catch (err) {
       if (!this.onError) {
         throw err;
       }
 
-      await this.onError(
-        err,
-        ctx,
-        command,
-      );
+      await this.onError(err, ctx, command);
     }
   };
 
@@ -270,11 +197,7 @@ export class CommandRouter {
     command: CommandDefinition,
   ): Promise<void> {
     if (this.onBlocked) {
-      await this.onBlocked(
-        ctx,
-        reason,
-        command,
-      );
+      await this.onBlocked(ctx, reason, command);
 
       return;
     }
@@ -283,14 +206,10 @@ export class CommandRouter {
       return;
     }
 
-    await ctx.reply(
-      this.defaultBlockedMessage(reason),
-    );
+    await ctx.reply(this.defaultBlockedMessage(reason));
   }
 
-  private defaultBlockedMessage(
-    reason: UnauthorizedReason,
-  ): string {
+  private defaultBlockedMessage(reason: UnauthorizedReason): string {
     switch (reason) {
       case 'group':
         return 'Este comando só pode ser usado em grupos.';
@@ -303,11 +222,7 @@ export class CommandRouter {
     }
   }
 
-  private normalize(
-    name: string,
-  ): string {
-    return this.caseSensitive
-      ? name
-      : name.toLowerCase();
+  private normalize(name: string): string {
+    return this.caseSensitive ? name : name.toLowerCase();
   }
 }

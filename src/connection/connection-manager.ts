@@ -2,6 +2,7 @@ import { Boom } from '@hapi/boom';
 
 import {
   DisconnectReason,
+  type ConnectionState,
   type WASocket,
 } from '@whiskeysockets/baileys';
 
@@ -14,8 +15,7 @@ import type { ReconnectionPolicy } from './reconnection-policy.js';
 export class ConnectionManager {
   private socket: WASocket | null = null;
 
-  private reconnectTimer: NodeJS.Timeout | null =
-    null;
+  private reconnectTimer: NodeJS.Timeout | null = null;
 
   private attempt = 0;
   private destroyed = false;
@@ -30,36 +30,20 @@ export class ConnectionManager {
   attach(socket: WASocket): void {
     this.socket = socket;
 
-    socket.ev.on(
-      'connection.update',
-      (update) =>
-        this.handleUpdate(update),
-    );
+    socket.ev.on('connection.update', (update) => this.handleUpdate(update));
   }
 
-  private handleUpdate(
-    update: Parameters<
-      Parameters<WASocket['ev']['on']>[1]
-    >[0],
-  ): void {
-    const {
-      connection,
-      lastDisconnect,
-    } = update as any;
+  private handleUpdate(update: Partial<ConnectionState>): void {
+    const { connection, lastDisconnect } = update;
 
     if (connection === 'open') {
       this.attempt = 0;
 
       this.clearTimer();
 
-      this.bus.emit(
-        'ready',
-        undefined as void,
-      );
+      this.bus.emit('ready');
 
-      this.logger.info(
-        'Connected to WhatsApp',
-      );
+      this.logger.info('Connected to WhatsApp');
 
       return;
     }
@@ -68,29 +52,19 @@ export class ConnectionManager {
       return;
     }
 
-    const error =
-      lastDisconnect?.error as
-        | Boom
-        | undefined;
+    const error = lastDisconnect?.error as Boom | undefined;
 
-    const statusCode =
-      error?.output?.statusCode;
+    const statusCode = error?.output?.statusCode;
 
-    this.logger.warn(
-      { statusCode },
-      'Connection closed',
-    );
+    this.logger.warn({ statusCode }, 'Connection closed');
 
     switch (statusCode) {
       case DisconnectReason.loggedOut:
-        this.bus.emit(
-          'disconnected',
-          {
-            reason: 'logged_out',
-            willReconnect: false,
-            attempt: this.attempt,
-          },
-        );
+        this.bus.emit('disconnected', {
+          reason: 'logged_out',
+          willReconnect: false,
+          attempt: this.attempt,
+        });
 
         return;
 
@@ -100,65 +74,42 @@ export class ConnectionManager {
         return;
     }
 
-    if (
-      this.policy.shouldReconnect(
-        error,
-        this.attempt,
-      )
-    ) {
-      this.scheduleReconnect(
-        this.policy.delayFor(
-          this.attempt,
-        ),
-      );
+    if (this.policy.shouldReconnect(error, this.attempt)) {
+      this.scheduleReconnect(this.policy.delayFor(this.attempt));
 
       return;
     }
 
-    this.bus.emit(
-      'disconnected',
-      {
-        reason: String(
-          error?.message ??
-            'unknown',
-        ),
-        willReconnect: false,
-        attempt: this.attempt,
-      },
-    );
+    this.bus.emit('disconnected', {
+      reason: String(error?.message ?? 'unknown'),
+      willReconnect: false,
+      attempt: this.attempt,
+    });
   }
 
-  private scheduleReconnect(
-    delayMs: number,
-  ): void {
+  private scheduleReconnect(delayMs: number): void {
     if (this.destroyed) {
       return;
     }
 
     this.clearTimer();
 
-    this.reconnectTimer = setTimeout(
-      async () => {
-        this.attempt++;
+    this.reconnectTimer = setTimeout(async () => {
+      this.attempt++;
 
-        this.bus.emit(
-          'reconnecting',
-          {
-            attempt: this.attempt,
-          },
-        );
+      this.bus.emit('reconnecting', {
+        attempt: this.attempt,
+      });
 
-        this.logger.info(
-          {
-            attempt: this.attempt,
-          },
-          'Reconnecting...',
-        );
+      this.logger.info(
+        {
+          attempt: this.attempt,
+        },
+        'Reconnecting...',
+      );
 
-        await this.reconnectFn();
-      },
-      delayMs,
-    );
+      await this.reconnectFn();
+    }, delayMs);
   }
 
   private clearTimer(): void {

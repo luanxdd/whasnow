@@ -1,21 +1,8 @@
-import {
-  and,
-  eq,
-  gt,
-  isNull,
-  lt,
-  or,
-} from 'drizzle-orm';
+import { and, eq, gt, isNull, lt, or } from 'drizzle-orm';
 
-import {
-  getDb,
-  mutedUsers,
-} from '../database/db.js';
+import { getDb, mutedUsers } from '../database/db.js';
 
-import type {
-  Jid,
-  MuteEntry,
-} from '../types/common.js';
+import type { Jid, MuteEntry } from '../types/common.js';
 
 export interface MuteOptions {
   duration?: number;
@@ -28,17 +15,10 @@ export class MuteStore {
     this.db = getDb(dbPath);
   }
 
-  mute(
-    groupId: Jid,
-    userJid: Jid,
-    options: MuteOptions = {},
-  ): void {
+  mute(groupId: Jid, userJid: Jid, options: MuteOptions = {}): void {
     const now = Date.now();
 
-    const expiresAt =
-      options.duration != null
-        ? now + options.duration
-        : null;
+    const expiresAt = options.duration != null ? now + options.duration : null;
 
     this.db
       .insert(mutedUsers)
@@ -49,10 +29,7 @@ export class MuteStore {
         expiresAt,
       })
       .onConflictDoUpdate({
-        target: [
-          mutedUsers.groupId,
-          mutedUsers.userJid,
-        ],
+        target: [mutedUsers.groupId, mutedUsers.userJid],
 
         set: {
           mutedAt: now,
@@ -62,25 +39,16 @@ export class MuteStore {
       .run();
   }
 
-  unmute(
-    groupId: Jid,
-    userJid: Jid,
-  ): void {
+  unmute(groupId: Jid, userJid: Jid): void {
     this.db
       .delete(mutedUsers)
       .where(
-        and(
-          eq(mutedUsers.groupId, groupId),
-          eq(mutedUsers.userJid, userJid),
-        ),
+        and(eq(mutedUsers.groupId, groupId), eq(mutedUsers.userJid, userJid)),
       )
       .run();
   }
 
-  isMuted(
-    groupId: Jid,
-    userJid: Jid,
-  ): boolean {
+  isMuted(groupId: Jid, userJid: Jid): boolean {
     const now = Date.now();
 
     const row = this.db
@@ -91,10 +59,7 @@ export class MuteStore {
           eq(mutedUsers.groupId, groupId),
           eq(mutedUsers.userJid, userJid),
 
-          or(
-            isNull(mutedUsers.expiresAt),
-            gt(mutedUsers.expiresAt, now),
-          ),
+          or(isNull(mutedUsers.expiresAt), gt(mutedUsers.expiresAt, now)),
         ),
       )
       .get();
@@ -112,10 +77,7 @@ export class MuteStore {
         and(
           eq(mutedUsers.groupId, groupId),
 
-          or(
-            isNull(mutedUsers.expiresAt),
-            gt(mutedUsers.expiresAt, now),
-          ),
+          or(isNull(mutedUsers.expiresAt), gt(mutedUsers.expiresAt, now)),
         ),
       )
       .all();
@@ -126,21 +88,13 @@ export class MuteStore {
 
       mutedAt: new Date(row.mutedAt),
 
-      expiresAt:
-        row.expiresAt != null
-          ? new Date(row.expiresAt)
-          : null,
+      expiresAt: row.expiresAt != null ? new Date(row.expiresAt) : null,
     }));
   }
 
   cleanup(): void {
     const now = Date.now();
 
-    this.db
-      .delete(mutedUsers)
-      .where(
-        lt(mutedUsers.expiresAt, now),
-      )
-      .run();
+    this.db.delete(mutedUsers).where(lt(mutedUsers.expiresAt, now)).run();
   }
 }

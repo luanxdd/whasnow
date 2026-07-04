@@ -3,6 +3,8 @@ export type MediaSource = string | Buffer;
 export type MessageId = string;
 export type PhoneNumber = string;
 
+export type Awaitable<T> = T | Promise<T>;
+
 export type CallStatus =
   | 'offer'
   | 'ringing'
