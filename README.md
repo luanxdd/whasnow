@@ -702,16 +702,35 @@ client.on('disconnected', ({ reason, willReconnect, attempt }) => {});
 client.on('reconnecting', ({ attempt }) => {});
 client.on('error', (err) => {});
 
-client.on('group.update', (payload) => {});
+client.on('group.updated', (payload) => {});
 client.on('group.participant', (payload) => {});
+client.on('group.joinRequest', (payload) => {});
 client.on('presence', (payload) => {});
 client.on('message.edited', (payload) => {});
 client.on('message.deleted', (payload) => {});
+client.on('message.reaction', (payload) => {});
+client.on('message.receipt', (payload) => {});
+
+client.on('chat.upserted', (payload) => {});
+client.on('chat.updated', (payload) => {});
+client.on('chat.deleted', (payload) => {});
+
+client.on('contact.upserted', (payload) => {});
+client.on('contact.updated', (payload) => {});
+
+client.on('blocklist.updated', (payload) => {});
 
 client.on('call', (payload) => {});
 client.on('poll.vote', (payload) => {});
 client.on('status.posted', (payload) => {});
 ```
+
+- `group.joinRequest` dispara quando alguém pede pra entrar num grupo com aprovação de admin ativada, ou quando esse pedido é retirado/negado (`action`: `'created'`, `'rejected'` ou `'revoked'`). Para aprovar ou negar, use `group.approveJoinRequests()` / `group.rejectJoinRequests()`.
+- `message.reaction` dispara a cada reação (emoji) adicionada ou removida de uma mensagem; `emoji: null` e `removed: true` indicam que a reação foi retirada.
+- `message.receipt` dispara conforme o status de entrega de uma mensagem evolui (`'delivered'` → `'read'` → `'played'`, esse último só pra mídia de voz/vídeo único).
+- `chat.upserted`/`chat.updated`/`chat.deleted` acompanham a lista de conversas (novas conversas, conversas arquivadas/lidas, conversas removidas).
+- `contact.upserted`/`contact.updated` acompanham a agenda de contatos sincronizada da conta conectada.
+- `blocklist.updated` dispara tanto no snapshot inicial (`type: 'set'`) quanto quando alguém é bloqueado/desbloqueado (`type: 'add' | 'remove'`).
 
 Use `.once()` em vez de `.on()` quando só precisar escutar a primeira ocorrência.
 

@@ -77,6 +77,57 @@ export interface StatusPostedPayload {
   isMedia: boolean;
 }
 
+export interface MessageReactionPayload {
+  chatId: string;
+  messageId: string;
+  senderId: string;
+  emoji: string | null;
+  removed: boolean;
+}
+
+export interface MessageReceiptPayload {
+  chatId: string;
+  messageId: string;
+  participantId: string;
+  status: 'delivered' | 'read' | 'played';
+  timestamp: Date;
+}
+
+export interface GroupJoinRequestPayload {
+  groupId: string;
+  participantId: string;
+  action: 'created' | 'revoked' | 'rejected';
+  method: string;
+}
+
+export interface ChatUpsertedPayload {
+  chatId: string;
+  name?: string;
+  unreadCount?: number;
+}
+
+export interface ChatUpdatedPayload {
+  chatId: string;
+}
+
+export interface ChatDeletedPayload {
+  chatId: string;
+}
+
+export interface ContactUpsertedPayload {
+  jid: string;
+  name?: string;
+}
+
+export interface ContactUpdatedPayload {
+  jid: string;
+}
+
+export interface BlocklistUpdatedPayload {
+  blocklist: string[];
+  type: 'set' | 'add' | 'remove';
+}
+
 export interface WhaSnowEventMap {
   ready: void;
 
@@ -97,6 +148,20 @@ export interface WhaSnowEventMap {
   call: CallPayload;
   'poll.vote': PollVotePayload;
   'status.posted': StatusPostedPayload;
+
+  'message.reaction': MessageReactionPayload;
+  'message.receipt': MessageReceiptPayload;
+
+  'group.joinRequest': GroupJoinRequestPayload;
+
+  'chat.upserted': ChatUpsertedPayload;
+  'chat.updated': ChatUpdatedPayload;
+  'chat.deleted': ChatDeletedPayload;
+
+  'contact.upserted': ContactUpsertedPayload;
+  'contact.updated': ContactUpdatedPayload;
+
+  'blocklist.updated': BlocklistUpdatedPayload;
 
   error: Error;
 }

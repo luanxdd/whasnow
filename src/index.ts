@@ -88,12 +88,21 @@ export type { MuteOptions } from './stores/mute-store.js';
 export type { WhaSnowConfig } from './types/config.js';
 
 export type {
+  BlocklistUpdatedPayload,
   CallPayload,
+  ChatDeletedPayload,
+  ChatUpdatedPayload,
+  ChatUpsertedPayload,
   ConnectionClosePayload,
+  ContactUpdatedPayload,
+  ContactUpsertedPayload,
+  GroupJoinRequestPayload,
   GroupParticipantPayload,
   GroupUpdatePayload,
   MessageDeletedPayload,
   MessageEditedPayload,
+  MessageReactionPayload,
+  MessageReceiptPayload,
   MessageReceivedPayload,
   PairingCodePayload,
   PollVotePayload,

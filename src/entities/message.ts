@@ -179,6 +179,10 @@ export class Message {
     );
   }
 
+  get isStatusMention(): boolean {
+    return Boolean(this.raw.message?.groupStatusMentionMessage);
+  }
+
   get timestamp(): Date {
     const ts = this.raw.messageTimestamp;
 
