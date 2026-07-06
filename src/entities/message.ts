@@ -13,11 +13,15 @@ import { MediaDownloadError } from '../errors/index.js';
 import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
+  AlbumItem,
+  ButtonReply,
   CreateStickerOptions,
   Jid,
+  ListReply,
   MediaSource,
   MessageId,
   PollVote,
+  SendAlbumOptions,
   SendAudioOptions,
   SendDocumentOptions,
   SendImageOptions,
@@ -183,6 +187,34 @@ export class Message {
     return Boolean(this.raw.message?.groupStatusMentionMessage);
   }
 
+  get buttonReply(): ButtonReply | null {
+    const response = this.raw.message?.buttonsResponseMessage;
+
+    if (!response?.selectedButtonId) {
+      return null;
+    }
+
+    return {
+      id: response.selectedButtonId,
+      displayText: response.selectedDisplayText ?? '',
+    };
+  }
+
+  get listReply(): ListReply | null {
+    const response = this.raw.message?.listResponseMessage;
+    const rowId = response?.singleSelectReply?.selectedRowId;
+
+    if (!response || !rowId) {
+      return null;
+    }
+
+    return {
+      id: rowId,
+      title: response.title ?? '',
+      description: response.description ?? undefined,
+    };
+  }
+
   get timestamp(): Date {
     const ts = this.raw.messageTimestamp;
 
@@ -228,6 +260,13 @@ export class Message {
     options?: CreateStickerOptions,
   ): Promise<void> {
     return this.sender.sticker(source, options);
+  }
+
+  replyWithAlbum(
+    items: AlbumItem[],
+    options?: SendAlbumOptions,
+  ): Promise<Message> {
+    return this.sender.album(items, options);
   }
 
   async react(emoji: string): Promise<void> {

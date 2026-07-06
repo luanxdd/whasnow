@@ -60,6 +60,60 @@ export interface CreateStickerOptions extends StickerDefaults {
   backgroundColor?: string;
 }
 
+export interface AlbumImageItem {
+  image: MediaSource;
+  caption?: string;
+}
+
+export interface AlbumVideoItem {
+  video: MediaSource;
+  caption?: string;
+}
+
+export type AlbumItem = AlbumImageItem | AlbumVideoItem;
+
+export interface SendAlbumOptions {
+  mentions?: Jid[];
+}
+
+export interface ButtonOption {
+  id: string;
+  text: string;
+}
+
+export interface SendButtonsOptions {
+  footer?: string;
+  mentions?: Jid[];
+}
+
+export interface ButtonReply {
+  id: string;
+  displayText: string;
+}
+
+export interface ListRow {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+export interface ListSection {
+  title?: string;
+  rows: ListRow[];
+}
+
+export interface SendListOptions {
+  title?: string;
+  footer?: string;
+  mentions?: Jid[];
+}
+
+export interface ListReply {
+  id: string;
+  title: string;
+  description?: string;
+}
+
 export interface PostStatusOptions {
   statusJidList: Jid[];
   backgroundColor?: string;

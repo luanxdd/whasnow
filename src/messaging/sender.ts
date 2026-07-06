@@ -1,7 +1,9 @@
-import type {
-  AnyMessageContent,
-  WAMessage,
-  WASocket,
+import {
+  generateWAMessageFromContent,
+  proto,
+  type AnyMessageContent,
+  type WAMessage,
+  type WASocket,
 } from '@whiskeysockets/baileys';
 
 import { Message, type PollVoteSource } from '../entities/message.js';
@@ -11,12 +13,18 @@ import { MessageSendError } from '../errors/index.js';
 import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
+  AlbumItem,
+  ButtonOption,
   CreateStickerOptions,
   Jid,
+  ListSection,
   MediaSource,
+  SendAlbumOptions,
   SendAudioOptions,
+  SendButtonsOptions,
   SendDocumentOptions,
   SendImageOptions,
+  SendListOptions,
   SendPollOptions,
   SendTextOptions,
   SendVideoOptions,
@@ -174,6 +182,113 @@ export class MessageSender {
     );
   }
 
+  async buttons(
+    text: string,
+    buttons: ButtonOption[],
+    options: SendButtonsOptions = {},
+  ): Promise<Message> {
+    const raw = await this.dispatchRaw({
+      buttonsMessage: {
+        contentText: text,
+        footerText: options.footer,
+        headerType: proto.Message.ButtonsMessage.HeaderType.EMPTY,
+        buttons: buttons.map((button) => ({
+          buttonId: button.id,
+          buttonText: { displayText: button.text },
+          type: proto.Message.ButtonsMessage.Button.Type.RESPONSE,
+        })),
+        contextInfo: options.mentions
+          ? { mentionedJid: options.mentions }
+          : undefined,
+      },
+    });
+
+    return new Message(
+      this.socket,
+      raw,
+      this.rateLimiter,
+      this.pollStore,
+      this.stickerDefaults,
+    );
+  }
+
+  async list(
+    text: string,
+    buttonText: string,
+    sections: ListSection[],
+    options: SendListOptions = {},
+  ): Promise<Message> {
+    const raw = await this.dispatchRaw({
+      listMessage: {
+        title: options.title,
+        description: text,
+        buttonText,
+        footerText: options.footer,
+        listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
+        sections: sections.map((section) => ({
+          title: section.title,
+          rows: section.rows.map((row) => ({
+            rowId: row.id,
+            title: row.title,
+            description: row.description,
+          })),
+        })),
+        contextInfo: options.mentions
+          ? { mentionedJid: options.mentions }
+          : undefined,
+      },
+    });
+
+    return new Message(
+      this.socket,
+      raw,
+      this.rateLimiter,
+      this.pollStore,
+      this.stickerDefaults,
+    );
+  }
+
+  async album(
+    items: AlbumItem[],
+    options: SendAlbumOptions = {},
+  ): Promise<Message> {
+    const expectedImageCount = items.filter((item) => 'image' in item).length;
+    const expectedVideoCount = items.filter((item) => 'video' in item).length;
+
+    const parent = await this.dispatch({
+      album: { expectedImageCount, expectedVideoCount },
+      mentions: options.mentions,
+    });
+
+    for (const item of items) {
+      if ('image' in item) {
+        const image = await resolveMedia(item.image);
+
+        await this.dispatch({
+          image,
+          caption: item.caption,
+          albumParentKey: parent.key,
+        });
+      } else {
+        const video = await resolveMedia(item.video);
+
+        await this.dispatch({
+          video,
+          caption: item.caption,
+          albumParentKey: parent.key,
+        });
+      }
+    }
+
+    return new Message(
+      this.socket,
+      parent,
+      this.rateLimiter,
+      this.pollStore,
+      this.stickerDefaults,
+    );
+  }
+
   private async dispatch(content: AnyMessageContent): Promise<WAMessage> {
     const send = async (): Promise<WAMessage> => {
       const raw = await this.socket.sendMessage(
@@ -191,6 +306,23 @@ export class MessageSender {
       }
 
       return raw;
+    };
+
+    return this.rateLimiter ? this.rateLimiter.schedule(send) : send();
+  }
+
+  private async dispatchRaw(content: proto.IMessage): Promise<WAMessage> {
+    const send = async (): Promise<WAMessage> => {
+      const fullMessage = generateWAMessageFromContent(this.chatId, content, {
+        userJid: this.socket.user?.id ?? '',
+        quoted: this.quotedMessage,
+      });
+
+      await this.socket.relayMessage(this.chatId, fullMessage.message!, {
+        messageId: fullMessage.key.id ?? undefined,
+      });
+
+      return fullMessage;
     };
 
     return this.rateLimiter ? this.rateLimiter.schedule(send) : send();

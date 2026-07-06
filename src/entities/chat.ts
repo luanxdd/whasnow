@@ -6,12 +6,18 @@ import { MessageSender } from '../messaging/sender.js';
 import type { RateLimiter } from '../connection/rate-limiter.js';
 
 import type {
+  AlbumItem,
+  ButtonOption,
   CreateStickerOptions,
   Jid,
+  ListSection,
   MediaSource,
+  SendAlbumOptions,
   SendAudioOptions,
+  SendButtonsOptions,
   SendDocumentOptions,
   SendImageOptions,
+  SendListOptions,
   SendPollOptions,
   SendTextOptions,
   SendVideoOptions,
@@ -136,5 +142,26 @@ export class ChatSend {
     options?: SendPollOptions,
   ): Promise<Message> {
     return this.sender.poll(name, values, options);
+  }
+
+  buttons(
+    text: string,
+    buttons: ButtonOption[],
+    options?: SendButtonsOptions,
+  ): Promise<Message> {
+    return this.sender.buttons(text, buttons, options);
+  }
+
+  list(
+    text: string,
+    buttonText: string,
+    sections: ListSection[],
+    options?: SendListOptions,
+  ): Promise<Message> {
+    return this.sender.list(text, buttonText, sections, options);
+  }
+
+  album(items: AlbumItem[], options?: SendAlbumOptions): Promise<Message> {
+    return this.sender.album(items, options);
   }
 }

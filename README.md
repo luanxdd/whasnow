@@ -28,6 +28,7 @@ await client.start();
 - [Recebendo mensagens](#recebendo-mensagens)
 - [Sistema de comandos](#sistema-de-comandos)
 - [Enviando mensagens e mídia](#enviando-mensagens-e-mídia)
+- [Álbum de imagens](#álbum-de-imagens)
 - [Criando stickers](#criando-stickers)
 - [Trabalhando com grupos](#trabalhando-com-grupos)
 - [Mute nativo](#mute-nativo)
@@ -480,6 +481,28 @@ const client = new Client({
 ```
 
 O limite é por `Client` (conta), não por chat — então enviar para 10 chats diferentes ainda respeita o mesmo intervalo entre si.
+
+---
+
+## Álbum de imagens
+
+`send.album()` agrupa várias imagens e vídeos numa única mensagem de álbum — a mesma visualização em grade que o próprio WhatsApp usa quando você seleciona várias mídias de uma vez antes de enviar.
+
+```ts
+await ctx.chat.send.album([
+  { image: './foto1.jpg', caption: 'Legenda da primeira' },
+  { image: './foto2.jpg' },
+  { video: './clipe.mp4', caption: 'E um vídeo também' },
+]);
+```
+
+Cada item aceita `image` ou `video` (nunca os dois no mesmo item), no mesmo formato de `MediaSource` usado pelos outros métodos de envio (caminho de arquivo, URL ou `Buffer`), com uma `caption` opcional por item.
+
+```ts
+await ctx.message.replyWithAlbum([{ image: fotoBuffer }, { image: outraFotoBuffer }]); // cita a mensagem original, como os outros replyWith*
+```
+
+Por baixo dos panos, a WhaSnow primeiro envia uma mensagem "contêiner" avisando quantas imagens/vídeos vêm a seguir, e então cada mídia é enviada individualmente apontando de volta pra esse contêiner — é assim que o WhatsApp agrupa tudo visualmente num álbum só. `send.album()`/`replyWithAlbum()` só resolvem depois que todas as mídias tiverem sido enviadas, e retornam a mensagem "contêiner" (um `Message`), não uma lista com as mídias individuais.
 
 ---
 
