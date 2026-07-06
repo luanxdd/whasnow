@@ -38,6 +38,7 @@ export class SocketEventAdapter {
       this.bus.emit('group.participant', {
         groupId: update.id,
         action: update.action as 'add' | 'remove' | 'promote' | 'demote',
+        actorId: update.author ?? '',
         participants: update.participants.map(
           (participant: GroupParticipant | string) =>
             typeof participant === 'string'

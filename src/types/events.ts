@@ -18,6 +18,7 @@ export interface ConnectionClosePayload {
 export interface GroupParticipantPayload {
   groupId: string;
   action: 'add' | 'remove' | 'promote' | 'demote';
+  actorId: string;
   participants: string[];
 }
 
