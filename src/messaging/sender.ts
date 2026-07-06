@@ -39,6 +39,12 @@ import {
 
 import { buildSticker } from '../media/sticker-builder.js';
 
+import {
+  buildButtonsNodes,
+  buildListNodes,
+  type InteractiveBinaryNode,
+} from './interactive-nodes.js';
+
 export class MessageSender {
   constructor(
     private readonly socket: WASocket,
@@ -187,21 +193,24 @@ export class MessageSender {
     buttons: ButtonOption[],
     options: SendButtonsOptions = {},
   ): Promise<Message> {
-    const raw = await this.dispatchRaw({
-      buttonsMessage: {
-        contentText: text,
-        footerText: options.footer,
-        headerType: proto.Message.ButtonsMessage.HeaderType.EMPTY,
-        buttons: buttons.map((button) => ({
-          buttonId: button.id,
-          buttonText: { displayText: button.text },
-          type: proto.Message.ButtonsMessage.Button.Type.RESPONSE,
-        })),
-        contextInfo: options.mentions
-          ? { mentionedJid: options.mentions }
-          : undefined,
+    const raw = await this.dispatchRaw(
+      {
+        buttonsMessage: {
+          contentText: text,
+          footerText: options.footer,
+          headerType: proto.Message.ButtonsMessage.HeaderType.EMPTY,
+          buttons: buttons.map((button) => ({
+            buttonId: button.id,
+            buttonText: { displayText: button.text },
+            type: proto.Message.ButtonsMessage.Button.Type.RESPONSE,
+          })),
+          contextInfo: options.mentions
+            ? { mentionedJid: options.mentions }
+            : undefined,
+        },
       },
-    });
+      buildButtonsNodes(this.isGroupChat),
+    );
 
     return new Message(
       this.socket,
@@ -218,26 +227,29 @@ export class MessageSender {
     sections: ListSection[],
     options: SendListOptions = {},
   ): Promise<Message> {
-    const raw = await this.dispatchRaw({
-      listMessage: {
-        title: options.title,
-        description: text,
-        buttonText,
-        footerText: options.footer,
-        listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
-        sections: sections.map((section) => ({
-          title: section.title,
-          rows: section.rows.map((row) => ({
-            rowId: row.id,
-            title: row.title,
-            description: row.description,
+    const raw = await this.dispatchRaw(
+      {
+        listMessage: {
+          title: options.title,
+          description: text,
+          buttonText,
+          footerText: options.footer,
+          listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
+          sections: sections.map((section) => ({
+            title: section.title,
+            rows: section.rows.map((row) => ({
+              rowId: row.id,
+              title: row.title,
+              description: row.description,
+            })),
           })),
-        })),
-        contextInfo: options.mentions
-          ? { mentionedJid: options.mentions }
-          : undefined,
+          contextInfo: options.mentions
+            ? { mentionedJid: options.mentions }
+            : undefined,
+        },
       },
-    });
+      buildListNodes(this.isGroupChat),
+    );
 
     return new Message(
       this.socket,
@@ -311,20 +323,55 @@ export class MessageSender {
     return this.rateLimiter ? this.rateLimiter.schedule(send) : send();
   }
 
-  private async dispatchRaw(content: proto.IMessage): Promise<WAMessage> {
+  private get isGroupChat(): boolean {
+    return this.chatId.endsWith('@g.us');
+  }
+
+  private async dispatchRaw(
+    content: proto.IMessage,
+    additionalNodes?: InteractiveBinaryNode[],
+  ): Promise<WAMessage> {
     const send = async (): Promise<WAMessage> => {
       const fullMessage = generateWAMessageFromContent(this.chatId, content, {
         userJid: this.socket.user?.id ?? '',
         quoted: this.quotedMessage,
       });
 
-      await this.socket.relayMessage(this.chatId, fullMessage.message!, {
-        messageId: fullMessage.key.id ?? undefined,
-      });
+      await withTimeout(
+        this.socket.relayMessage(this.chatId, fullMessage.message!, {
+          messageId: fullMessage.key.id ?? undefined,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          additionalNodes: additionalNodes as any,
+        }),
+        15_000,
+        'envio de mensagem interativa (buttons/list)',
+      );
 
       return fullMessage;
     };
 
     return this.rateLimiter ? this.rateLimiter.schedule(send) : send();
   }
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+
+  const timeout = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        new MessageSendError(
+          `Timeout de ${ms}ms ao aguardar confirmação de envio: ${label}. ` +
+            'O WhatsApp pode não ter renderizado a mensagem interativa ' +
+            '(recurso não-oficial, sujeito a mudanças no protocolo).',
+        ),
+      );
+    }, ms);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
