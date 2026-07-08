@@ -72,6 +72,10 @@ export class Context {
     return this.message.isGroup;
   }
 
+  get isOwner(): boolean {
+    return this.message.fromMe;
+  }
+
   group(): Group | null {
     return this.isGroup
       ? new Group(

@@ -12,7 +12,7 @@ import {
   type LoadCommandsResult,
 } from './command-loader.js';
 
-export type UnauthorizedReason = 'group' | 'admin' | 'cooldown';
+export type UnauthorizedReason = 'group' | 'admin' | 'owner' | 'cooldown';
 
 export interface CommandDefinition {
   aliases?: string[];
@@ -23,6 +23,7 @@ export interface CommandDefinition {
 
   onlyAdmin?: boolean;
   onlyGroup?: boolean;
+  onlyOwner?: boolean;
 
   execute: (ctx: Context, args: ArgsParser) => Awaitable<unknown>;
 }
@@ -164,6 +165,12 @@ export class CommandRouter {
       return;
     }
 
+    if (command.onlyOwner && !ctx.isOwner) {
+      await this.notifyBlockedReason(ctx, 'owner', command);
+
+      return;
+    }
+
     if (command.cooldownMs) {
       const key = `${this.normalize(command.name)}:${ctx.from.jid}`;
 
@@ -216,6 +223,9 @@ export class CommandRouter {
 
       case 'admin':
         return 'Apenas administradores podem usar este comando.';
+
+      case 'owner':
+        return 'Apenas o dono do bot pode usar este comando.';
 
       case 'cooldown':
         return 'Aguarde um pouco antes de usar este comando novamente.';

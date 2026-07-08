@@ -192,9 +192,45 @@ router.register({
     // ...
   },
 });
+
+router.register({
+  name: 'once',
+  onlyOwner: true, // só executa se a mensagem for do próprio número do bot
+  async execute(ctx) {
+    // ...
+  },
+});
 ```
 
 `execute` aceita `async`/`await` ou pode retornar a Promise direto (`return ctx.reply(...)`).
+
+### Comandos restritos ao dono (`onlyOwner`)
+
+Mensagens enviadas pelo próprio número autenticado do bot (`fromMe`) chegam normalmente aos handlers e ao `CommandRouter`, a WhaSnow não descarta mais essas mensagens. Isso permite, por exemplo, enviar comandos para o próprio bot a partir do celular do dono.
+
+Para restringir um comando exclusivamente a essas mensagens, use `onlyOwner: true`:
+
+```ts
+router.register({
+  name: 'once',
+  onlyOwner: true,
+  async execute(ctx) {
+    return ctx.reply('Só o dono do bot chega até aqui.');
+  },
+});
+```
+
+Dentro de `execute` (ou em qualquer handler registrado com `client.onMessage`), também é possível checar isso manualmente através de `ctx.isOwner`:
+
+```ts
+client.onMessage(async (ctx) => {
+  if (!ctx.isOwner) return;
+
+  // lógica exclusiva do dono
+});
+```
+
+`ctx.isOwner` reflete o `fromMe` reportado pelo próprio WhatsApp, então funciona mesmo em conversas consigo mesmo (onde o JID do remetente normalmente não vem preenchido no payload).
 
 Para comandos simples, `router.registerMap()` evita repetir `name`: a chave já é o nome do comando.
 
@@ -243,7 +279,7 @@ Todos os métodos aceitam `{ default }` ou `{ optional: true }`. Sem nenhum dos 
 
 ### Bloqueio e erros de comando
 
-Se um comando é bloqueado (`onlyGroup`, `onlyAdmin`, `cooldownMs`) e nenhum `onBlocked` é informado, a WhaSnow responde com uma mensagem padrão em português. Para desabilitar isso, use `notifyBlocked: false`:
+Se um comando é bloqueado (`onlyGroup`, `onlyAdmin`, `onlyOwner`, `cooldownMs`) e nenhum `onBlocked` é informado, a WhaSnow responde com uma mensagem padrão em português. Para desabilitar isso, use `notifyBlocked: false`:
 
 ```ts
 client.commands({

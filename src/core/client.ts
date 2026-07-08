@@ -460,15 +460,12 @@ export class Client {
           this.pollStore.registerCreation(raw);
         }
 
-        if (raw.key.fromMe) {
-          continue;
-        }
-
         const isGroup = raw.key.remoteJid?.endsWith('@g.us') ?? false;
 
         const senderJid = raw.key.participant ?? raw.key.remoteJid;
 
         if (
+          !raw.key.fromMe &&
           isGroup &&
           raw.key.remoteJid &&
           senderJid &&
