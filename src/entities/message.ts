@@ -19,6 +19,7 @@ import type {
   Jid,
   ListReply,
   MediaSource,
+  MediaType,
   MessageId,
   PollVote,
   SendAlbumOptions,
@@ -142,16 +143,24 @@ export class Message {
     );
   }
 
-  get isMedia(): boolean {
+  get mediaType(): MediaType | null {
     const msg = this.raw.message;
 
-    return Boolean(
-      msg?.imageMessage ||
-      msg?.videoMessage ||
-      msg?.audioMessage ||
-      msg?.documentMessage ||
-      msg?.stickerMessage,
-    );
+    if (!msg) {
+      return null;
+    }
+
+    if (msg.imageMessage) return 'image';
+    if (msg.videoMessage) return 'video';
+    if (msg.audioMessage) return 'audio';
+    if (msg.documentMessage) return 'document';
+    if (msg.stickerMessage) return 'sticker';
+
+    return null;
+  }
+
+  get isMedia(): boolean {
+    return this.mediaType !== null;
   }
 
   get isViewOnce(): boolean {

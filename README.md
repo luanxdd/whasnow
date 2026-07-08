@@ -115,6 +115,7 @@ O `ctx` dá acesso a tudo sobre a mensagem recebida:
 client.onMessage(async (ctx) => {
   ctx.message.text; // texto da mensagem
   ctx.message.isMedia; // se é imagem/vídeo/áudio/documento/sticker
+  ctx.message.mediaType; // 'image' | 'video' | 'audio' | 'document' | 'sticker' | null
   ctx.isGroup; // se veio de um grupo
   ctx.from.jid; // quem enviou
   ctx.message.quoted; // mensagem citada (reply), se houver
@@ -447,6 +448,32 @@ client.onMessage(async (ctx) => {
   }
   if (ctx.message.isEphemeral) {
     /* ... */
+  }
+});
+```
+
+Combine com `mediaType` para saber o que é o conteúdo antes de decidir o que fazer com ele — por exemplo, ao reenviar uma mídia "ver uma vez" para outro chat antes que ela seja apagada:
+
+```ts
+client.onMessage(async (ctx) => {
+  const quoted = ctx.message.quoted;
+
+  if (!quoted?.isViewOnce) return;
+
+  const buffer = await quoted.downloadMedia();
+
+  switch (quoted.mediaType) {
+    case 'image':
+      await ctx.chat.send.image(buffer, { caption: 'Salvei essa 👀' });
+      break;
+    case 'video':
+      await ctx.chat.send.video(buffer, { caption: 'Salvei essa 👀' });
+      break;
+    case 'audio':
+      await ctx.chat.send.audio(buffer);
+      break;
+    default:
+      await ctx.chat.send.document(buffer, { fileName: 'view-once' });
   }
 });
 ```

@@ -12,6 +12,13 @@ export type CallStatus =
   | 'reject'
   | 'timeout';
 
+export type MediaType =
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'document'
+  | 'sticker';
+
 export interface SendTextOptions {
   mentions?: Jid[];
 }

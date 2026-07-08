@@ -76,6 +76,7 @@ export type {
   ListRow,
   ListSection,
   MediaSource,
+  MediaType,
   MessageId,
   MuteEntry,
   PhoneNumber,
